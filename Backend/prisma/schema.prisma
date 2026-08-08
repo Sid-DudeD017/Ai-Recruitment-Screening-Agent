@@ -1,0 +1,283 @@
+// =============================================================================
+// AI Recruitment Platform — Database Schema
+// =============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum Role {
+  ADMIN
+  RECRUITER
+  HIRING_MANAGER
+  CANDIDATE
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  REMOTE
+  INTERNSHIP
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  SHORTLISTED
+  INTERVIEW
+  OFFERED
+  HIRED
+  REJECTED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum InterviewType {
+  PHONE
+  VIDEO
+  ONSITE
+  TECHNICAL
+}
+
+enum NotificationType {
+  APPLICATION_STATUS
+  INTERVIEW_SCHEDULED
+  INTERVIEW_CANCELLED
+  CANDIDATE_HIRED
+  NEW_APPLICATION
+  SYSTEM
+}
+
+// =============================================================================
+// Models
+// =============================================================================
+
+/// The tenant boundary — all data is scoped to a company
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String?  @unique
+  logo      String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users      User[]
+  jobs       Job[]
+  candidates Candidate[]
+
+  @@map("companies")
+}
+
+/// Synced from Clerk via webhook — links external auth identity to our domain
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  role      Role     @default(RECRUITER)
+  avatarUrl String?
+  isActive  Boolean  @default(true)
+  companyId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  company       Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdJobs   Job[]          @relation("JobCreator")
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([clerkId])
+  @@index([companyId])
+  @@map("users")
+}
+
+/// A job posting created by a recruiter within a company
+model Job {
+  id           String    @id @default(cuid())
+  title        String
+  description  String    @db.Text
+  requirements String?   @db.Text
+  location     String?
+  type         JobType   @default(FULL_TIME)
+  salaryMin    Int?
+  salaryMax    Int?
+  currency     String    @default("USD")
+  status       JobStatus @default(DRAFT)
+  companyId    String
+  createdById  String
+  aiAnalysis   Json?     /// Analysis from AI teammate's /ai/analyze-job
+  publishedAt  DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy    User          @relation("JobCreator", fields: [createdById], references: [id])
+  applications Application[]
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@map("jobs")
+}
+
+/// A candidate (person being recruited), scoped to a company
+model Candidate {
+  id          String   @id @default(cuid())
+  email       String
+  firstName   String
+  lastName    String
+  phone       String?
+  linkedinUrl String?
+  source      String?  /// e.g., "LinkedIn", "Referral", "Website"
+  companyId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  resumes      Resume[]
+  applications Application[]
+
+  @@unique([email, companyId]) // Same person can exist in different companies
+  @@index([companyId])
+  @@index([companyId, email])
+  @@map("candidates")
+}
+
+/// An uploaded resume linked to a candidate
+model Resume {
+  id            String   @id @default(cuid())
+  candidateId   String
+  fileUrl       String
+  fileName      String
+  fileSize      Int?     /// Size in bytes
+  mimeType      String?
+  parsedContent Json?    /// Structured data from AI teammate's /ai/parse-resume
+  skills        String[] /// Extracted skills array
+  rawText       String?  @db.Text /// Plain text extraction
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@map("resumes")
+}
+
+/// Links a candidate to a job — the core workflow entity
+model Application {
+  id          String            @id @default(cuid())
+  candidateId String
+  jobId       String
+  status      ApplicationStatus @default(APPLIED)
+  matchScore  Float?            /// 0-100 score from AI teammate's /ai/match
+  aiAnalysis  Json?             /// Full AI match analysis
+  notes       String?           @db.Text
+  appliedAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  candidate  Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  interviews Interview[]
+
+  @@unique([candidateId, jobId]) // One application per candidate per job
+  @@index([jobId, status])
+  @@index([candidateId])
+  @@index([status])
+  @@map("applications")
+}
+
+/// A scheduled interview for an application
+model Interview {
+  id              String          @id @default(cuid())
+  applicationId   String
+  scheduledAt     DateTime
+  durationMinutes Int             @default(60)
+  type            InterviewType   @default(VIDEO)
+  status          InterviewStatus @default(SCHEDULED)
+  location        String?         /// Physical location or null for virtual
+  meetingLink     String?         /// Video call link
+  calendarEventId String?         /// Google Calendar event ID
+  interviewerIds  String[]        /// Array of User IDs conducting the interview
+  feedback        String?         @db.Text
+  rating          Int?            /// 1-5 rating after completion
+  notes           String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("interviews")
+}
+
+/// In-app notifications for users
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  metadata  Json?            /// Extra data (e.g., { applicationId, jobId })
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+/// Audit trail for all mutations — who did what, when
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   /// e.g., "CREATE", "UPDATE", "DELETE"
+  entity    String   /// e.g., "Job", "Application", "Interview"
+  entityId  String   /// ID of the affected entity
+  changes   Json?    /// Diff of what changed
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
