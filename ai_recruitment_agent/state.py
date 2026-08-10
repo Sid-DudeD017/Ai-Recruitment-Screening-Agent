@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional
+from typing import TypedDict, List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 class JobRequirements(BaseModel):
@@ -14,14 +14,20 @@ class ResumeData(BaseModel):
     education: List[str] = Field(description="List of educational degrees and institutions")
 
 class MatchScore(BaseModel):
-    score: int = Field(description="Score out of 100 representing how well the candidate matches the job")
-    reasoning: str = Field(description="Qualitative reasoning for the score provided")
+    """The result of the matching process between a resume and job description."""
+    skill_score: int = Field(description="Score out of 100 based strictly on technical skill overlap")
+    experience_score: int = Field(description="Score out of 100 based on years and relevance of experience")
+    project_score: int = Field(description="Score out of 100 based on relevant projects")
+    education_score: int = Field(description="Score out of 100 based on education and certifications")
+    soft_skill_score: int = Field(description="Score out of 100 based on communication and soft skills")
+    score: float = Field(description="The final calculated weighted score out of 100")
+    reasoning: str = Field(description="Brief explanation of the scores and overall fit")
 
 class BiasReport(BaseModel):
     bias_detected: bool = Field(description="True if potential bias was detected in the matching/scoring phase")
     concerns: List[str] = Field(description="List of specific concerns regarding bias")
 
-class GraphState(TypedDict):
+class GraphState(TypedDict, total=False):
     """State for the LangGraph pipeline processing a single candidate."""
     # Inputs
     job_description_text: str
@@ -33,3 +39,4 @@ class GraphState(TypedDict):
     match_score: Optional[MatchScore]
     bias_report: Optional[BiasReport]
     generated_email: Optional[str]
+    interview_schedule: Optional[Dict[str, Any]]

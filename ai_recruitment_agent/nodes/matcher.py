@@ -1,46 +1,71 @@
 from typing import Dict, Any
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
+
 from ai_recruitment_agent.state import GraphState, MatchScore
 from ai_recruitment_agent.llm import get_llm
+from ai_recruitment_agent.nodes.vector_store import create_resume_vectorstore, semantic_search_resume
+
+# Internal schema for the LLM to output just the category scores
+class LLMCategoryScores(BaseModel):
+    skill_score: int = Field(description="Score out of 100 based strictly on technical skill overlap")
+    experience_score: int = Field(description="Score out of 100 based on years and relevance of experience")
+    project_score: int = Field(description="Score out of 100 based on relevant projects")
+    education_score: int = Field(description="Score out of 100 based on education and certifications")
+    soft_skill_score: int = Field(description="Score out of 100 based on communication and soft skills")
+    reasoning: str = Field(description="Brief explanation of the scores and overall fit")
 
 def match_candidate(state: GraphState) -> Dict[str, Any]:
-    """Node that compares the parsed resume against the parsed job description."""
     llm = get_llm()
-    structured_llm = llm.with_structured_output(MatchScore)
+    structured_llm = llm.with_structured_output(LLMCategoryScores)
     
-    prompt = PromptTemplate.from_template(
-        "You are an expert technical recruiter matching a candidate to a job.\n"
-        "Review the Job Requirements and the Candidate's Resume Data below.\n\n"
-        "Job Requirements:\n"
-        "Title: {job_title}\n"
-        "Must-have skills: {must_haves}\n"
-        "Nice-to-have skills: {nice_haves}\n"
-        "Required Experience (years): {job_exp}\n\n"
-        "Candidate Resume Data:\n"
-        "Name: {candidate_name}\n"
-        "Skills: {candidate_skills}\n"
-        "Experience (years): {candidate_exp}\n"
-        "Education: {candidate_edu}\n\n"
-        "Task: Calculate a match score from 0 to 100 representing how well the candidate fits the job. "
-        "Weight must-have skills heavily. Provide qualitative reasoning for your score."
-    )
+    # Generate embeddings & FAISS vectorstore for the resume text
+    resume_text = state.get("resume_text", "")
+    if not resume_text:
+        raise ValueError("Resume text is empty, cannot perform semantic search.")
+        
+    vectorstore = create_resume_vectorstore(resume_text)
+    
+    # Create semantic queries from the parsed job description
+    job = state.get("parsed_job")
+    if not job:
+        raise ValueError("Parsed job requirements are missing.")
+        
+    queries = job.required_skills + [job.job_title, "projects", "education", "soft skills"]
+    
+    # Retrieve relevant resume chunks
+    relevant_resume_context = semantic_search_resume(vectorstore, queries)
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert technical recruiter AI. Grade the candidate strictly out of 100 on the 5 given categories based ONLY on the provided relevant resume excerpts. If an excerpt lacks evidence for a category, score it low."),
+        ("user", "Job Requirements:\n{job_reqs}\n\nRelevant Resume Excerpts (Semantic Search):\n{resume_context}")
+    ])
     
     chain = prompt | structured_llm
     
-    parsed_job = state["parsed_job"]
-    parsed_resume = state["parsed_resume"]
-    
-    print(f"--- MATCHING CANDIDATE: {parsed_resume.candidate_name} ---")
-    
-    result = chain.invoke({
-        "job_title": parsed_job.title,
-        "must_haves": ", ".join(parsed_job.must_have_skills),
-        "nice_haves": ", ".join(parsed_job.nice_to_have_skills),
-        "job_exp": parsed_job.years_of_experience if parsed_job.years_of_experience is not None else "Not specified",
-        "candidate_name": parsed_resume.candidate_name,
-        "candidate_skills": ", ".join(parsed_resume.skills),
-        "candidate_exp": parsed_resume.experience_years if parsed_resume.experience_years is not None else "Unknown",
-        "candidate_edu": ", ".join(parsed_resume.education)
+    result: LLMCategoryScores = chain.invoke({
+        "job_reqs": str(job.model_dump()),
+        "resume_context": relevant_resume_context
     })
     
-    return {"match_score": result}
+    # Apply strict weighting formula: 
+    # 40% Skills + 25% Experience + 15% Projects + 10% Education + 10% Soft Skills
+    final_score = (
+        (0.40 * result.skill_score) +
+        (0.25 * result.experience_score) +
+        (0.15 * result.project_score) +
+        (0.10 * result.education_score) +
+        (0.10 * result.soft_skill_score)
+    )
+    
+    final_match_score = MatchScore(
+        skill_score=result.skill_score,
+        experience_score=result.experience_score,
+        project_score=result.project_score,
+        education_score=result.education_score,
+        soft_skill_score=result.soft_skill_score,
+        score=round(final_score, 2),
+        reasoning=result.reasoning
+    )
+    
+    return {"match_score": final_match_score}
