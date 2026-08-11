@@ -337,7 +337,19 @@ export default function ApplicationsPage() {
                   <span className="bg-gray-200 px-2 py-0.5 rounded-full">{colApps.length}</span>
                 </div>
 
-                <div className=\"space-y-3\">\n                  {colApps.map((app) => (\n                    <div\n                      key={app.id}\n                      draggable\n                      onDragStart={(e) => handleDragStart(e, app.id)}\n                      className=\"bg-white p-4 rounded-lg border shadow-sm space-y-3 hover:shadow-md transition cursor-grab active:cursor-grabbing\"\n                    >\n                      <div>\n                        <h3 className=\"font-bold text-gray-900 text-sm\">\n                          {app.candidate?.firstName} {app.candidate?.lastName}\n                        </h3>\n                        <p className=\"text-xs text-gray-500\">{app.job?.title || 'Unknown Job'}</p>\n
+                <div className="space-y-3">
+                  {colApps.map((app) => (
+                    <div
+                      key={app.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, app.id)}
+                      className="bg-white p-4 rounded-lg border shadow-sm space-y-3 hover:shadow-md transition cursor-grab active:cursor-grabbing"
+                    >
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-sm">
+                          {app.candidate?.firstName} {app.candidate?.lastName}
+                        </h3>
+                        <p className="text-xs text-gray-500">{app.job?.title || 'Unknown Job'}</p>
                       </div>
 
                       {/* Match Score Badge */}
@@ -371,7 +383,50 @@ export default function ApplicationsPage() {
                   )}
                 </div>
               </div>
-            )\n          })}\n\n      {/* HITL Review Modal */}\n      {reviewingApp && (\n        <div className=\"fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4\">\n          <div className=\"bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl\">\n            <div>\n              <h2 className=\"text-xl font-bold text-gray-900\">Human-in-the-Loop Review</h2>\n              <p className=\"text-sm text-gray-500\">Review the AI's email draft for {reviewingApp.candidateName || (reviewingApp.candidate ? `${reviewingApp.candidate.firstName} ${reviewingApp.candidate.lastName}` : '')} before sending.</p>\n            </div>\n            \n            <div className=\"space-y-2\">\n              <label className=\"text-xs font-bold text-gray-700 uppercase\">AI Email Draft</label>\n              <textarea \n                value={editedEmail}\n                onChange={(e) => setEditedEmail(e.target.value)}\n                className=\"w-full h-48 p-3 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none\"\n              />\n            </div>\n\n            <div className=\"flex gap-3 justify-end pt-2\">\n              <button \n                onClick={() => setReviewingApp(null)}\n                className=\"px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md\"\n              >\n                Cancel\n              </button>\n              <button \n                onClick={handleReject}\n                className=\"px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-md\"\n              >\n                Reject Candidate\n              </button>\n              <button \n                onClick={handleApproveAndSend}\n                className=\"px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md\"\n              >\n                Approve & Send Email\n              </button>\n            </div>\n          </div>\n        </div>\n      )}\n
+            )
+          })}
+        </div>
+      )}
+
+      {/* HITL Review Modal */}
+      {reviewingApp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Human-in-the-Loop Review</h2>
+              <p className="text-sm text-gray-500">Review the AI's email draft for {reviewingApp.candidateName || (reviewingApp.candidate ? `${reviewingApp.candidate.firstName} ${reviewingApp.candidate.lastName}` : '')} before sending.</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase">AI Email Draft</label>
+              <textarea 
+                value={editedEmail}
+                onChange={(e) => setEditedEmail(e.target.value)}
+                className="w-full h-48 p-3 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button 
+                onClick={() => setReviewingApp(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleReject}
+                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
+              >
+                Reject Candidate
+              </button>
+              <button 
+                onClick={handleApproveAndSend}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+              >
+                Approve & Send Email
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

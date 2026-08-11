@@ -78,7 +78,7 @@ export default function CreateJobPage() {
           <input
             type="text"
             required
-            className="mt-1 w-full border rounded-lg p-2 text-sm"
+            className="mt-1 w-full border rounded-lg p-2 text-sm text-gray-900 bg-white placeholder-gray-400"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           />
@@ -90,7 +90,7 @@ export default function CreateJobPage() {
             <input
               type="text"
               required
-              className="mt-1 w-full border rounded-lg p-2 text-sm"
+              className="mt-1 w-full border rounded-lg p-2 text-sm text-gray-900 bg-white placeholder-gray-400"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             />
@@ -99,7 +99,7 @@ export default function CreateJobPage() {
             <label className="block text-sm font-medium text-gray-700">Type</label>
             <select
               required
-              className="mt-1 w-full border rounded-lg p-2 text-sm bg-white"
+              className="mt-1 w-full border rounded-lg p-2 text-sm bg-white text-gray-900 placeholder-gray-400"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             >
@@ -117,7 +117,7 @@ export default function CreateJobPage() {
             <label className="block text-sm font-medium text-gray-700">Minimum Salary (Optional)</label>
             <input
               type="number"
-              className="mt-1 w-full border rounded-lg p-2 text-sm"
+              className="mt-1 w-full border rounded-lg p-2 text-sm text-gray-900 bg-white placeholder-gray-400"
               value={formData.salaryMin}
               onChange={(e) => setFormData({ ...formData, salaryMin: e.target.value })}
             />
@@ -126,7 +126,7 @@ export default function CreateJobPage() {
             <label className="block text-sm font-medium text-gray-700">Maximum Salary (Optional)</label>
             <input
               type="number"
-              className="mt-1 w-full border rounded-lg p-2 text-sm"
+              className="mt-1 w-full border rounded-lg p-2 text-sm text-gray-900 bg-white placeholder-gray-400"
               value={formData.salaryMax}
               onChange={(e) => setFormData({ ...formData, salaryMax: e.target.value })}
             />
@@ -138,7 +138,7 @@ export default function CreateJobPage() {
           <textarea
             rows={4}
             required
-            className="mt-1 w-full border rounded-lg p-2 text-sm"
+            className="mt-1 w-full border rounded-lg p-2 text-sm text-gray-900 bg-white placeholder-gray-400"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
@@ -149,7 +149,7 @@ export default function CreateJobPage() {
           <textarea
             rows={3}
             required
-            className="mt-1 w-full border rounded-lg p-2 text-sm"
+            className="mt-1 w-full border rounded-lg p-2 text-sm text-gray-900 bg-white placeholder-gray-400"
             value={formData.requirements}
             onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
           />

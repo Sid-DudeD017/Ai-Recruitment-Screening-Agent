@@ -9,7 +9,7 @@ echo "Starting AI Recruitment Platform..."
 echo "[1/3] Starting Python AI Agent on port 8000..."
 cd /Users/siddharthbhakta/Ai-Recruitment-Screening-Agent
 source venv/bin/activate
-uvicorn api:app --host 0.0.0.0 --port 8000 &
+uvicorn ai_recruitment_agent.api:app --host 0.0.0.0 --port 8000 &
 
 # 2. Start Next.js Backend (Port 3001)
 echo "[2/3] Starting Next.js Backend on port 3001..."

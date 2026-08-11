@@ -1,14 +1,14 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+
+neonConfig.webSocketConstructor = ws;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-/**
- * Create a Prisma client with the Neon serverless adapter.
- * This is the recommended approach for Prisma 7 + Neon on Vercel.
- */
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
 

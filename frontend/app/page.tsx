@@ -80,6 +80,15 @@ export default function Dashboard() {
   }, [getToken])
 
   if (error) {
+    if (error === 'Authentication required') {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800">Welcome to AI Recruitment!</h2>
+          <p className="text-gray-500">Please sign in using the button in the top right to view your dashboard.</p>
+        </div>
+      )
+    }
+    
     return (
       <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200 m-8 max-w-4xl">
         <h2 className="font-bold">Error Loading Dashboard</h2>

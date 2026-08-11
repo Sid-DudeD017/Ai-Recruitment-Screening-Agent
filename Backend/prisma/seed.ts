@@ -1,5 +1,10 @@
+import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+
+neonConfig.webSocketConstructor = ws;
 
 const connectionString = process.env.DATABASE_URL!;
 const adapter = new PrismaNeon({ connectionString });
@@ -10,12 +15,12 @@ async function main() {
 
   // Create a demo company
   const company = await prisma.company.upsert({
-    where: { domain: "demo.recruitai.com" },
+    where: { domain: "local.dev" },
     update: {},
     create: {
-      name: "Demo Corp",
-      domain: "demo.recruitai.com",
-      website: "https://demo.recruitai.com",
+      name: "CodeLords Local Dev",
+      domain: "local.dev",
+      website: "https://local.dev",
     },
   });
   console.log(`  ✓ Company: ${company.name} (${company.id})`);
