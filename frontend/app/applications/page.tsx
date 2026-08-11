@@ -6,9 +6,10 @@ interface Application {
   id: string
   candidateName: string
   jobTitle: string
-  status: 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'HIRED'
+  status: 'APPLIED' | 'SCREENING' | 'PENDING_REVIEW' | 'INTERVIEW' | 'HIRED'
   matchScore?: number
   matchAnalysis?: string
+  draftEmail?: string
 }
 
 export default function ApplicationsPage() {
@@ -33,25 +34,38 @@ export default function ApplicationsPage() {
       jobTitle: 'Product Designer',
       status: 'INTERVIEW',
     },
+    {
+      id: 'app-4',
+      candidateName: 'Emily Watson',
+      jobTitle: 'Backend Engineer',
+      status: 'PENDING_REVIEW',
+      matchScore: 94,
+      matchAnalysis: 'Perfect fit. Strong Python and System Design.',
+      draftEmail: 'Subject: Next Steps at Our Company\n\nHi Emily,\n\nWe were extremely impressed by your background in Python and System Design. We would love to invite you to an interview this week.\n\nBest,\nRecruiting Team'
+    }
   ])
 
   const [loadingMatch, setLoadingMatch] = useState<string | null>(null)
   const [ranking, setRanking] = useState(false)
+  const [reviewingApp, setReviewingApp] = useState<Application | null>(null)
+  const [editedEmail, setEditedEmail] = useState('')
 
   // AI Feature: Match individual candidate (POST /api/ai/match)
   const handleAIMatch = async (appId: string) => {
     setLoadingMatch(appId)
 
-    // Simulate API call
+    // Simulate API call and automation pipeline
     setTimeout(() => {
       setApplications((prev) =>
         prev.map((app) =>
           app.id === appId
             ? {
                 ...app,
+                status: 'PENDING_REVIEW', // HITL Pause!
                 matchScore: 92,
                 matchAnalysis:
                   'Excellent fit! Strong modern frontend architecture skills and 5+ years of relevant experience.',
+                draftEmail: `Subject: Interview Invitation - ${app.jobTitle}\n\nHi ${app.candidateName.split(' ')[0]},\n\nWe reviewed your application and were very impressed with your modern frontend architecture skills. We would love to schedule an interview.\n\nBest,\nRecruiting Team`
               }
             : app
         )
@@ -77,7 +91,25 @@ export default function ApplicationsPage() {
     }, 1500)
   }
 
-  const columns: Application['status'][] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'HIRED']
+  const handleApproveAndSend = () => {
+    if (!reviewingApp) return
+    // Simulate sending email and advancing stage
+    setApplications(prev => prev.map(app => 
+      app.id === reviewingApp.id ? { ...app, status: 'INTERVIEW' } : app
+    ))
+    setReviewingApp(null)
+    alert('Email Sent successfully!')
+  }
+
+  const handleReject = () => {
+    if (!reviewingApp) return
+    setApplications(prev => prev.map(app => 
+      app.id === reviewingApp.id ? { ...app, status: 'REJECTED' as any } : app
+    ))
+    setReviewingApp(null)
+  }
+
+  const columns: Application['status'][] = ['APPLIED', 'SCREENING', 'PENDING_REVIEW', 'INTERVIEW']
 
   return (
     <div className="space-y-6">
@@ -129,6 +161,17 @@ export default function ApplicationsPage() {
                         {app.matchAnalysis && (
                           <p className="text-[11px] text-green-900 leading-tight">{app.matchAnalysis}</p>
                         )}
+                        {app.status === 'PENDING_REVIEW' && (
+                          <button 
+                            onClick={() => {
+                              setReviewingApp(app)
+                              setEditedEmail(app.draftEmail || '')
+                            }}
+                            className="mt-2 w-full text-xs bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded font-medium transition"
+                          >
+                            Review AI Draft
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <button
@@ -146,6 +189,48 @@ export default function ApplicationsPage() {
           )
         })}
       </div>
+
+      {/* HITL Review Modal */}
+      {reviewingApp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Human-in-the-Loop Review</h2>
+              <p className="text-sm text-gray-500">Review the AI's email draft for {reviewingApp.candidateName} before sending.</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase">AI Email Draft</label>
+              <textarea 
+                value={editedEmail}
+                onChange={(e) => setEditedEmail(e.target.value)}
+                className="w-full h-48 p-3 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button 
+                onClick={() => setReviewingApp(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleReject}
+                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
+              >
+                Reject Candidate
+              </button>
+              <button 
+                onClick={handleApproveAndSend}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+              >
+                Approve & Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

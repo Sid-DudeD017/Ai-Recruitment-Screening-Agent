@@ -40,6 +40,7 @@ enum JobType {
 enum ApplicationStatus {
   APPLIED
   SCREENING
+  PENDING_REVIEW
   SHORTLISTED
   INTERVIEW
   OFFERED
@@ -67,6 +68,12 @@ enum NotificationType {
   CANDIDATE_HIRED
   NEW_APPLICATION
   SYSTEM
+}
+
+enum EmailDraftStatus {
+  DRAFT
+  SENT
+  REJECTED
 }
 
 // =============================================================================
@@ -207,12 +214,30 @@ model Application {
   candidate  Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
   interviews Interview[]
+  emailDraft EmailDraft?
 
   @@unique([candidateId, jobId]) // One application per candidate per job
   @@index([jobId, status])
   @@index([candidateId])
   @@index([status])
   @@map("applications")
+}
+
+/// An AI generated email draft awaiting human approval
+model EmailDraft {
+  id            String           @id @default(cuid())
+  applicationId String           @unique
+  subject       String
+  body          String           @db.Text
+  status        EmailDraftStatus @default(DRAFT)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  application   Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("email_drafts")
 }
 
 /// A scheduled interview for an application
