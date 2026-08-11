@@ -1,5 +1,12 @@
 langchain
 langgraph
-langchain-ollama
+langchain-openai
 pydantic
+fastapi
+uvicorn
 python-dotenv
+pdfplumber
+faiss-cpu
+tiktoken
+langchain-community
+python-multipart

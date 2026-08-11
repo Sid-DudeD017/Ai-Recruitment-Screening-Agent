@@ -1,21 +1,22 @@
 import os
 from typing import Optional
 from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-def get_llm(model: Optional[str] = None, temperature: float = 0.0) -> ChatOllama:
-    """Returns the configured Ollama LLM instance."""
+def get_llm(model: Optional[str] = None, temperature: float = 0.0) -> ChatOpenAI:
+    """Returns the configured OpenAI LLM instance."""
     
-    # Default to llama3
-    selected_model = model or os.getenv("OLLAMA_MODEL", "llama3")
+    # Default to gpt-4o-mini
+    selected_model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     
-    # Optional: allow configuring the base URL if Ollama is not on localhost:11434
-    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is not set in the environment.")
     
-    return ChatOllama(
+    return ChatOpenAI(
         model=selected_model,
         temperature=temperature,
-        base_url=base_url
+        openai_api_key=api_key
     )

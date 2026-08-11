@@ -76,6 +76,22 @@ class AIClient {
     return response.data;
   }
 
+  async uploadAndParseResume(file: File): Promise<ParseResumeResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const response = await this.client.post<ParseResumeResponse>(
+      "/ai/upload-and-parse-resume",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        }
+      }
+    );
+    return response.data;
+  }
+
   async analyzeJob(data: AnalyzeJobRequest): Promise<AnalyzeJobResponse> {
     const response = await this.client.post<AnalyzeJobResponse>(
       "/ai/analyze-job",
