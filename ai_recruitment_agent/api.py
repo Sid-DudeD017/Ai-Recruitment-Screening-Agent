@@ -71,7 +71,7 @@ async def api_parse_resume(req: ParseResumeRequest):
 
 @app.post("/ai/upload-and-parse-resume", response_model=ResumeData)
 async def api_upload_and_parse_resume(file: UploadFile = File(...)):
-    if not file.filename.endswith(".pdf"):
+    if not file.filename or not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
         
     # Save the file temporarily

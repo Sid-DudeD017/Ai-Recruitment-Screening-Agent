@@ -157,30 +157,30 @@ async function resolveAuth(): Promise<AuthContext> {
       
       if (orgId) {
         // Sync the organization JIT
-        let company = await prisma.company.findUnique({ where: { id: orgId } });
-        if (!company) {
-          const clerkOrg = await clerk.organizations.getOrganization({ organizationId: orgId });
-          company = await prisma.company.create({
-            data: { id: orgId, name: clerkOrg.name, domain: "example.com" }
-          });
-          logger.info({ orgId }, "JIT: Synced Company from Clerk");
-        }
+        const clerkOrg = await clerk.organizations.getOrganization({ organizationId: orgId });
+        const company = await prisma.company.upsert({
+          where: { id: orgId },
+          update: { name: clerkOrg.name },
+          create: { id: orgId, name: clerkOrg.name }
+        });
         companyIdToAssign = company.id;
+        logger.info({ orgId }, "JIT: Synced Company from Clerk");
       } else {
         // Create a dummy company for local development if no org is selected
-        const dummy = await prisma.company.findFirst({ where: { name: "CodeLords Local Dev" } });
-        if (dummy) {
-          companyIdToAssign = dummy.id;
-        } else {
-          const newDummy = await prisma.company.create({
-            data: { name: "CodeLords Local Dev", domain: "local.dev" }
-          });
-          companyIdToAssign = newDummy.id;
-        }
+        const dummy = await prisma.company.upsert({
+          where: { domain: "local.dev" },
+          update: {},
+          create: { name: "CodeLords Local Dev", domain: "local.dev" }
+        });
+        companyIdToAssign = dummy.id;
       }
 
-      user = await prisma.user.create({
-        data: {
+      user = await prisma.user.upsert({
+        where: { clerkId },
+        update: {
+          companyId: companyIdToAssign,
+        },
+        create: {
           clerkId,
           email,
           firstName: clerkUser.firstName || "",
@@ -199,13 +199,12 @@ async function resolveAuth(): Promise<AuthContext> {
 
   // JIT Context Switch: If they switched orgs in Clerk UI, update their active local context
   if (orgId && user.companyId !== orgId) {
-    let company = await prisma.company.findUnique({ where: { id: orgId } });
-    if (!company) {
-      const clerkOrg = await clerk.organizations.getOrganization({ organizationId: orgId });
-      company = await prisma.company.create({
-        data: { id: orgId, name: clerkOrg.name, domain: "example.com" }
-      });
-    }
+    const clerkOrg = await clerk.organizations.getOrganization({ organizationId: orgId });
+    await prisma.company.upsert({
+      where: { id: orgId },
+      update: { name: clerkOrg.name },
+      create: { id: orgId, name: clerkOrg.name }
+    });
     
     user = await prisma.user.update({
       where: { id: user.id },

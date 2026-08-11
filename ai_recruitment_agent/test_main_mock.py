@@ -1,6 +1,6 @@
 import os
 import test_graph_mock
-import main
+import ai_recruitment_agent.main
 
 # Override the app in main.py
 main.create_recruitment_graph = lambda: test_graph_mock.app

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/nextjs'
 
 interface Stats {
   totalJobs: number
@@ -28,36 +29,64 @@ export default function Dashboard() {
   const [pipeline, setPipeline] = useState<PipelineStage[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const { getToken } = useAuth()
 
   useEffect(() => {
-    // Mocking initial responses; hook up fetchApi('/api/dashboard/stats') here when backend is ready
-    setTimeout(() => {
-      setStats({
-        totalJobs: 12,
-        openJobs: 5,
-        totalCandidates: 148,
-        applicationsThisMonth: 34,
-        upcomingInterviews: 6,
-        hiredThisMonth: 3,
-      })
+    async function fetchDashboardData() {
+      try {
+        setLoading(true)
+        const token = await getToken()
+        
+        if (!token) {
+          setError('Authentication required')
+          return
+        }
 
-      setPipeline([
-        { status: 'APPLIED', count: 42 },
-        { status: 'SHORTLISTED', count: 18 },
-        { status: 'INTERVIEW', count: 8 },
-        { status: 'OFFER', count: 4 },
-        { status: 'HIRED', count: 3 },
-      ])
+        const headers = {
+          'Authorization': `Bearer ${token}`
+        }
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
-      setActivities([
-        { id: '1', action: 'Uploaded resume for John Doe', timestamp: '10 mins ago', user: 'Recruiter Alex' },
-        { id: '2', action: 'Ran AI Bias Check on "Senior React Dev"', timestamp: '1 hour ago', user: 'Sarah' },
-        { id: '3', action: 'Scheduled interview with Jane Smith', timestamp: '3 hours ago', user: 'Recruiter Alex' },
-      ])
+        const [statsRes, pipelineRes, activitiesRes] = await Promise.all([
+          fetch(`${baseUrl}/dashboard/stats`, { headers }),
+          fetch(`${baseUrl}/dashboard/pipeline`, { headers }),
+          fetch(`${baseUrl}/dashboard/activity`, { headers })
+        ])
 
-      setLoading(false)
-    }, 400)
-  }, [])
+        if (!statsRes.ok || !pipelineRes.ok || !activitiesRes.ok) {
+          throw new Error('Failed to fetch dashboard data')
+        }
+
+        const [statsData, pipelineData, activitiesData] = await Promise.all([
+          statsRes.json(),
+          pipelineRes.json(),
+          activitiesRes.json()
+        ])
+
+        setStats(statsData.data)
+        setPipeline(pipelineData.data)
+        setActivities(activitiesData.data)
+      } catch (err) {
+        console.error(err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [getToken])
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200 m-8 max-w-4xl">
+        <h2 className="font-bold">Error Loading Dashboard</h2>
+        <p>{error}</p>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
