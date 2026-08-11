@@ -22,8 +22,8 @@ An intelligent, multi-stage AI platform that automates candidate screening. The 
 
 The platform is split into three main components that run concurrently:
 
-1. **Frontend (Next.js - Port 3000)**: Displays candidate lists, job matching UI, and a drag-and-drop file uploader for resumes.
-2. **Backend (Next.js - Port 3001)**: Handles authentication validation, Prisma database connections, optionally Vercel Blob Storage for files, and forwards AI tasks to the Python Agent.
+1. **Frontend (Next.js 16.3+ - Port 3000)**: Displays candidate lists, job matching UI, and a drag-and-drop file uploader for resumes.
+2. **Backend (Next.js 16.3+ - Port 3001)**: Handles authentication validation, Prisma database connections using the `@neondatabase/serverless` and `@prisma/adapter-neon` drivers, optionally Vercel Blob Storage for files, and forwards AI tasks to the Python Agent.
 3. **AI Agent (Python FastAPI - Port 8000)**: Runs the LangGraph state machine. It accepts uploaded PDFs, extracts text, runs the LLM screening pipeline, and returns structured JSON (Pydantic models) back to the Backend.
 
 ---
@@ -86,9 +86,21 @@ CLERK_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
-### 3. Start the Platform
+### 3. Generate and Seed the Database
 
-A unified startup script `start.sh` is provided in the root directory to boot all 3 services at once and automatically sync your database schema.
+Before starting the server for the first time, generate the Prisma Client and seed your Neon Database with dummy data (Candidates, Jobs, Applications) so the UI displays correctly:
+
+```bash
+cd Backend
+npx prisma generate
+npx prisma db push
+npx tsx prisma/seed.ts
+cd ..
+```
+
+### 4. Start the Platform
+
+A unified startup script `start.sh` is provided in the root directory to boot all 3 services at once.
 
 ```bash
 chmod +x start.sh
@@ -101,6 +113,21 @@ chmod +x start.sh
 3. Starts the **Next.js Frontend** on `http://localhost:3000`
 
 You can now open your browser to `http://localhost:3000` and test out the platform! Upload a real PDF resume on the Candidates page to watch the end-to-end extraction and database syncing in action.
+
+---
+
+## ⚠️ Important Configuration Notes
+
+### 1. Prisma Neon Adapter (WebSockets)
+When running the Backend via Node.js locally (instead of Edge), the Neon Serverless driver requires an explicit `ws` polyfill to function. This has already been patched in `prisma.client.ts`:
+```typescript
+import ws from "ws";
+import { neonConfig } from "@neondatabase/serverless";
+neonConfig.webSocketConstructor = ws;
+```
+
+### 2. Next.js 16.3 Middleware vs Proxy
+As of Next.js 16.3, `middleware.ts` is deprecated in favor of `proxy.ts`. Ensure you **do not** have both files in your `Backend/src` directory, as having both will cause the server to crash instantly with an Unhandled Rejection.
 
 ---
 
