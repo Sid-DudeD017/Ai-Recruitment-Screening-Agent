@@ -2,47 +2,75 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
 
 export default function CreateJobPage() {
   const router = useRouter()
+  const { getToken } = useAuth()
+  
   const [formData, setFormData] = useState({
     title: '',
-    department: '',
-    location: '',
     description: '',
     requirements: '',
+    location: '',
+    type: 'FULL_TIME',
+    salaryMin: '',
+    salaryMax: '',
   })
+  
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const [biasAnalysis, setBiasAnalysis] = useState<string | null>(null)
-  const [checkingBias, setCheckingBias] = useState(false)
-
-  // AI Feature: Check for Bias (POST /api/ai/check-bias)
-  const handleCheckBias = async () => {
-    if (!formData.description) return
-    setCheckingBias(true)
-    setBiasAnalysis(null)
-
-    // Simulate API call to /api/ai/check-bias
-    setTimeout(() => {
-      setBiasAnalysis(
-        'AI Analysis: The description is overall inclusive. Consider replacing aggressive terms like "rockstar candidate" with "experienced engineer".'
-      )
-      setCheckingBias(false)
-    }, 1000)
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Submit via POST /api/jobs here
-    router.push('/jobs')
+    setError(null)
+    setLoading(true)
+    
+    try {
+      const token = await getToken()
+      if (!token) throw new Error("Authentication required")
+      
+      const payload = {
+        ...formData,
+        salaryMin: formData.salaryMin ? parseInt(formData.salaryMin, 10) : undefined,
+        salaryMax: formData.salaryMax ? parseInt(formData.salaryMax, 10) : undefined,
+      }
+      
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const res = await fetch(`${baseUrl}/jobs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null)
+        throw new Error(errData?.error?.message || 'Failed to create job')
+      }
+      
+      router.push('/jobs')
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setLoading(false)
+    }
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Post a New Job</h1>
-        <p className="text-gray-500">Fill in details and run an AI bias check on the description.</p>
+        <p className="text-gray-500">Fill in details for the open position.</p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
+          <p>{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
         <div>
@@ -58,16 +86,6 @@ export default function CreateJobPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Department</label>
-            <input
-              type="text"
-              required
-              className="mt-1 w-full border rounded-lg p-2 text-sm"
-              value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700">Location</label>
             <input
               type="text"
@@ -77,40 +95,72 @@ export default function CreateJobPage() {
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Type</label>
+            <select
+              required
+              className="mt-1 w-full border rounded-lg p-2 text-sm bg-white"
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            >
+              <option value="FULL_TIME">Full Time</option>
+              <option value="PART_TIME">Part Time</option>
+              <option value="CONTRACT">Contract</option>
+              <option value="REMOTE">Remote</option>
+              <option value="INTERNSHIP">Internship</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Minimum Salary (Optional)</label>
+            <input
+              type="number"
+              className="mt-1 w-full border rounded-lg p-2 text-sm"
+              value={formData.salaryMin}
+              onChange={(e) => setFormData({ ...formData, salaryMin: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Maximum Salary (Optional)</label>
+            <input
+              type="number"
+              className="mt-1 w-full border rounded-lg p-2 text-sm"
+              value={formData.salaryMax}
+              onChange={(e) => setFormData({ ...formData, salaryMax: e.target.value })}
+            />
+          </div>
         </div>
 
         <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="block text-sm font-medium text-gray-700">Job Description</label>
-            <button
-              type="button"
-              onClick={handleCheckBias}
-              disabled={checkingBias || !formData.description}
-              className="text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-md font-medium disabled:opacity-50 transition"
-            >
-              {checkingBias ? 'Checking...' : '✨ Check AI Bias'}
-            </button>
-          </div>
+          <label className="block text-sm font-medium text-gray-700">Job Description</label>
           <textarea
             rows={4}
             required
-            className="w-full border rounded-lg p-2 text-sm"
+            className="mt-1 w-full border rounded-lg p-2 text-sm"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
         </div>
-
-        {biasAnalysis && (
-          <div className="p-3 bg-purple-50 border border-purple-200 text-purple-900 rounded-lg text-xs">
-            {biasAnalysis}
-          </div>
-        )}
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Requirements</label>
+          <textarea
+            rows={3}
+            required
+            className="mt-1 w-full border rounded-lg p-2 text-sm"
+            value={formData.requirements}
+            onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
+          />
+        </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition"
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition disabled:opacity-50"
         >
-          Publish Position
+          {loading ? 'Publishing...' : 'Publish Position'}
         </button>
       </form>
     </div>

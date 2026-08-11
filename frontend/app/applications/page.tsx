@@ -1,83 +1,256 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@clerk/nextjs'
 
 interface Application {
   id: string
-  candidateName: string
-  jobTitle: string
-  status: 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'HIRED'
-  matchScore?: number
-  matchAnalysis?: string
+  candidateId: string
+  jobId: string
+  status: 'APPLIED' | 'SCREENING' | 'SHORTLISTED' | 'INTERVIEW' | 'OFFERED' | 'HIRED' | 'REJECTED'
+  matchScore?: number | null
+  aiAnalysis?: any
+  candidate?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+  job?: {
+    title: string
+  }
+}
+
+interface Job {
+  id: string
+  title: string
 }
 
 export default function ApplicationsPage() {
-  const [applications, setApplications] = useState<Application[]>([
-    {
-      id: 'app-1',
-      candidateName: 'Sarah Jenkins',
-      jobTitle: 'Senior Frontend Engineer',
-      status: 'APPLIED',
-    },
-    {
-      id: 'app-2',
-      candidateName: 'Alex Rivera',
-      jobTitle: 'Senior Frontend Engineer',
-      status: 'SCREENING',
-      matchScore: 88,
-      matchAnalysis: 'Strong React and Next.js background. Matches 8/10 core skills.',
-    },
-    {
-      id: 'app-3',
-      candidateName: 'David Chen',
-      jobTitle: 'Product Designer',
-      status: 'INTERVIEW',
-    },
-  ])
-
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [activeJobId, setActiveJobId] = useState<string>('')
+  
+  const [applications, setApplications] = useState<Application[]>([])
+  const [loadingApps, setLoadingApps] = useState(false)
+  
   const [loadingMatch, setLoadingMatch] = useState<string | null>(null)
   const [ranking, setRanking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const { getToken } = useAuth()
+
+  // 1. Fetch Jobs on mount for the selector
+  useEffect(() => {
+    async function fetchJobs() {
+      try {
+        const token = await getToken()
+        if (!token) return
+
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        const res = await fetch(`${baseUrl}/jobs`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const json = await res.json()
+          setJobs(json.data || [])
+          if (json.data && json.data.length > 0) {
+            setActiveJobId(json.data[0].id)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch jobs', err)
+      }
+    }
+    fetchJobs()
+  }, [getToken])
+
+  // 2. Fetch Applications when activeJobId changes
+  useEffect(() => {
+    async function fetchApplications() {
+      if (!activeJobId) return
+      
+      try {
+        setLoadingApps(true)
+        const token = await getToken()
+        if (!token) return
+
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        // Pass jobId as query param. If API doesn't support it, we filter on client anyway.
+        const res = await fetch(`${baseUrl}/applications?jobId=${activeJobId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        
+        if (!res.ok) {
+          throw new Error('Failed to fetch applications')
+        }
+        
+        const json = await res.json()
+        const apps = Array.isArray(json.data) ? json.data : []
+        // Filter by job ID on client just in case the API ignores the query param
+        setApplications(apps.filter((a: Application) => a.jobId === activeJobId))
+      } catch (err) {
+        console.error(err)
+        setError(err instanceof Error ? err.message : 'Unknown error fetching apps')
+      } finally {
+        setLoadingApps(false)
+      }
+    }
+    fetchApplications()
+  }, [activeJobId, getToken])
 
   // AI Feature: Match individual candidate (POST /api/ai/match)
-  const handleAIMatch = async (appId: string) => {
-    setLoadingMatch(appId)
-
-    // Simulate API call
-    setTimeout(() => {
+  const handleAIMatch = async (app: Application) => {
+    setLoadingMatch(app.id)
+    setError(null)
+    try {
+      const token = await getToken()
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      
+      // Wait, standard AI match endpoint takes candidateSkills etc... but the instruction says:
+      // POST /api/ai/match with candidateId + jobId
+      const res = await fetch(`${baseUrl}/ai/match`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ candidateId: app.candidateId, jobId: app.jobId })
+      })
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null)
+        throw new Error(errData?.error?.message || 'Match failed')
+      }
+      
+      const json = await res.json()
+      
+      // We expect the backend to return { matchScore, recommendation, ... }
       setApplications((prev) =>
-        prev.map((app) =>
-          app.id === appId
+        prev.map((a) =>
+          a.id === app.id
             ? {
-                ...app,
-                matchScore: 92,
-                matchAnalysis:
-                  'Excellent fit! Strong modern frontend architecture skills and 5+ years of relevant experience.',
+                ...a,
+                matchScore: json.data?.matchScore,
+                aiAnalysis: json.data?.recommendation || json.data?.analysis || 'Match completed',
               }
-            : app
+            : a
         )
       )
+    } catch (err) {
+      console.error(err)
+      alert(err instanceof Error ? err.message : 'Failed AI Match')
+    } finally {
       setLoadingMatch(null)
-    }, 1200)
+    }
   }
 
   // AI Feature: Rank all candidates (POST /api/ai/rank)
   const handleRankAll = async () => {
+    if (!activeJobId) return
     setRanking(true)
-
-    // Simulate ranking execution
-    setTimeout(() => {
+    setError(null)
+    
+    try {
+      const token = await getToken()
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      
+      const res = await fetch(`${baseUrl}/ai/rank`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ jobId: activeJobId })
+      })
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null)
+        throw new Error(errData?.error?.message || 'Ranking failed')
+      }
+      
+      const json = await res.json()
+      const rankings = json.data?.rankings || []
+      
+      // Build a map of candidateId -> ranking data
+      const rankMap = new Map()
+      rankings.forEach((r: any, index: number) => {
+        rankMap.set(r.candidateId, { ...r, rankIndex: index + 1 })
+      })
+      
       setApplications((prev) =>
-        prev.map((app, index) => ({
-          ...app,
-          matchScore: 95 - index * 7,
-          matchAnalysis: `Rank #${index + 1}: High alignment with job requirements.`,
-        }))
+        prev.map((app) => {
+          if (app.jobId !== activeJobId) return app
+          const r = rankMap.get(app.candidateId)
+          if (r) {
+            return {
+              ...app,
+              matchScore: r.score,
+              aiAnalysis: `Rank #${r.rankIndex}: ${r.reasoning}`,
+            }
+          }
+          return app
+        }).sort((a, b) => {
+           // Re-sort within the list by match score descending
+           const scoreA = a.matchScore || 0;
+           const scoreB = b.matchScore || 0;
+           return scoreB - scoreA;
+        })
       )
+    } catch (err) {
+      console.error(err)
+      alert(err instanceof Error ? err.message : 'Failed to rank candidates')
+    } finally {
       setRanking(false)
-    }, 1500)
+    }
   }
 
-  const columns: Application['status'][] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'HIRED']
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, appId: string) => {
+    e.dataTransfer.setData('appId', appId)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetStatus: Application['status']) => {
+    e.preventDefault()
+    const appId = e.dataTransfer.getData('appId')
+    if (!appId) return
+
+    const appToMove = applications.find(a => a.id === appId)
+    if (!appToMove || appToMove.status === targetStatus) return
+
+    const previousStatus = appToMove.status
+    
+    // Optimistic update
+    setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: targetStatus } : a))
+    
+    try {
+      const token = await getToken()
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      
+      const res = await fetch(`${baseUrl}/applications/${appId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: targetStatus })
+      })
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null)
+        throw new Error(errData?.error?.message || 'Invalid state transition')
+      }
+    } catch (err) {
+      console.error('Failed to move application:', err)
+      // Rollback optimistic update
+      setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: previousStatus } : a))
+      alert(err instanceof Error ? err.message : 'Failed to change status')
+    }
+  }
+
+  const columns: Application['status'][] = ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED']
 
   return (
     <div className="space-y-6">
@@ -87,65 +260,103 @@ export default function ApplicationsPage() {
           <p className="text-gray-500">Track candidates and run AI evaluation matching.</p>
         </div>
 
-        <button
-          onClick={handleRankAll}
-          disabled={ranking}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 disabled:opacity-50"
-        >
-          {ranking ? 'Ranking...' : '✨ AI Rank All Candidates'}
-        </button>
+        <div className="flex items-center gap-4">
+          <select 
+            value={activeJobId} 
+            onChange={e => setActiveJobId(e.target.value)}
+            className="border-gray-300 rounded-lg text-sm bg-white border p-2"
+          >
+            <option value="" disabled>Select a job</option>
+            {jobs.map(j => (
+              <option key={j.id} value={j.id}>{j.title}</option>
+            ))}
+          </select>
+          
+          <button
+            onClick={handleRankAll}
+            disabled={ranking || !activeJobId}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+          >
+            {ranking ? 'Ranking...' : '✨ AI Rank All'}
+          </button>
+        </div>
       </div>
 
-      {/* Kanban Board Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {columns.map((col) => {
-          const colApps = applications.filter((a) => a.status === col)
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
+          <p>{error}</p>
+        </div>
+      )}
 
-          return (
-            <div key={col} className="bg-gray-100 rounded-xl p-4 space-y-3 min-h-[500px]">
-              <div className="flex justify-between items-center text-xs font-bold text-gray-600 uppercase">
-                <span>{col}</span>
-                <span className="bg-gray-200 px-2 py-0.5 rounded-full">{colApps.length}</span>
-              </div>
+      {loadingApps ? (
+        <div className="p-12 text-center text-gray-500 animate-pulse">Loading applications...</div>
+      ) : (
+        <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
+          {columns.map((col) => {
+            const colApps = applications.filter((a) => a.status === col)
 
-              <div className="space-y-3">
-                {colApps.map((app) => (
-                  <div
-                    key={app.id}
-                    className="bg-white p-4 rounded-lg border shadow-sm space-y-3 hover:shadow-md transition"
-                  >
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{app.candidateName}</h3>
-                      <p className="text-xs text-gray-500">{app.jobTitle}</p>
-                    </div>
+            return (
+              <div 
+                key={col} 
+                className="bg-gray-100 rounded-xl p-4 space-y-3 min-w-[280px] w-[280px] flex-shrink-0 snap-start min-h-[500px]"
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, col)}
+              >
+                <div className="flex justify-between items-center text-xs font-bold text-gray-600 uppercase">
+                  <span>{col}</span>
+                  <span className="bg-gray-200 px-2 py-0.5 rounded-full">{colApps.length}</span>
+                </div>
 
-                    {/* Match Score Badge */}
-                    {app.matchScore !== undefined ? (
-                      <div className="p-2 bg-green-50 border border-green-200 rounded-md space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-green-800">AI Match Score</span>
-                          <span className="text-xs font-extrabold text-green-700">{app.matchScore}%</span>
-                        </div>
-                        {app.matchAnalysis && (
-                          <p className="text-[11px] text-green-900 leading-tight">{app.matchAnalysis}</p>
-                        )}
+                <div className="space-y-3">
+                  {colApps.map((app) => (
+                    <div
+                      key={app.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, app.id)}
+                      className="bg-white p-4 rounded-lg border shadow-sm space-y-3 hover:shadow-md transition cursor-grab active:cursor-grabbing"
+                    >
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-sm">
+                          {app.candidate?.firstName} {app.candidate?.lastName}
+                        </h3>
+                        <p className="text-xs text-gray-500">{app.job?.title || 'Unknown Job'}</p>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => handleAIMatch(app.id)}
-                        disabled={loadingMatch === app.id}
-                        className="w-full text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 rounded font-medium transition"
-                      >
-                        {loadingMatch === app.id ? 'Evaluating...' : '✨ Run AI Match'}
-                      </button>
-                    )}
-                  </div>
-                ))}
+
+                      {/* Match Score Badge */}
+                      {app.matchScore != null ? (
+                        <div className="p-2 bg-green-50 border border-green-200 rounded-md space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-green-800">AI Match Score</span>
+                            <span className="text-xs font-extrabold text-green-700">{Math.round(app.matchScore)}%</span>
+                          </div>
+                          {app.aiAnalysis && (
+                            <p className="text-[11px] text-green-900 leading-tight">
+                              {typeof app.aiAnalysis === 'string' ? app.aiAnalysis : JSON.stringify(app.aiAnalysis)}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleAIMatch(app)}
+                          disabled={loadingMatch === app.id}
+                          className="w-full text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 rounded font-medium transition disabled:opacity-50"
+                        >
+                          {loadingMatch === app.id ? 'Evaluating...' : '✨ Run AI Match'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {colApps.length === 0 && (
+                    <div className="p-4 text-center text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+                      Drop cards here
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
