@@ -14,7 +14,7 @@ export const vercelBlobStorage: StorageService = {
     const path = `${folder}/${Date.now()}-${fileName}`;
 
     const blob = await put(path, file, {
-      access: "public",
+      access: "private",
       contentType: options?.contentType,
     });
 

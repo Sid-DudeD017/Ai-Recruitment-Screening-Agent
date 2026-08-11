@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import Link from 'next/link'
 
 interface Candidate {
   id: string
@@ -11,6 +12,10 @@ interface Candidate {
   phone?: string | null
   linkedinUrl?: string | null
   resumeUploaded?: boolean
+  _count?: {
+    resumes: number;
+    applications: number;
+  }
 }
 
 export default function CandidatesPage() {
@@ -27,9 +32,11 @@ export default function CandidatesPage() {
   
   const { getToken } = useAuth()
   
-  const [loading, setLoading] = useState(false)
+  const [isAddingCandidate, setIsAddingCandidate] = useState(false)
+  const [uploadingResumeId, setUploadingResumeId] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
 
   useEffect(() => {
@@ -63,8 +70,9 @@ export default function CandidatesPage() {
     e.preventDefault()
     if (!firstName || !lastName || !email) return
 
-    setLoading(true)
+    setIsAddingCandidate(true)
     setError(null)
+    setSuccessMsg(null)
     
     try {
       const token = await getToken()
@@ -101,63 +109,58 @@ export default function CandidatesPage() {
       setEmail('')
       setPhone('')
       setLinkedinUrl('')
+      setSuccessMsg('Candidate added successfully!')
+      setTimeout(() => setSuccessMsg(null), 3000)
     } catch (err) {
       console.error(err)
-      alert(err instanceof Error ? err.message : 'Failed to create candidate')
+      setError(err instanceof Error ? err.message : 'Failed to create candidate')
     } finally {
-      setLoading(false)
+      setIsAddingCandidate(false)
     }
   }
 
   // 2. Upload Resume PDF (POST /api/candidates/:id/resume)
   const handleResumeUpload = async (candidateId: string) => {
-    // 1. Create a hidden file input element dynamically
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.pdf';
-    
-    // 2. Listen for the user selecting a file
-    fileInput.onchange = async (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      
-      setLoading(true);
-      
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const token = await getToken();
-        
-        // POST to the Next.js backend, which will forward to Python
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/candidates/${candidateId}/resume`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-        
-        if (!res.ok) {
-          throw new Error('Failed to upload resume');
-        }
-        
-        // Optimistically update the UI to show the resume was uploaded
-        setCandidates((prev) =>
-          prev.map((c) => (c.id === candidateId ? { ...c, resumeUploaded: true } : c))
-        );
-        
-        alert('Resume uploaded successfully! AI extraction complete.');
-      } catch (error) {
-        console.error(error);
-        alert('Error uploading resume. Check console.');
-      } finally {
-        setLoading(false);
+    if (!selectedFile) return;
+
+    setUploadingResumeId(candidateId);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const token = await getToken();
+
+      // POST to the backend
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/candidates/${candidateId}/resume`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to upload resume');
       }
-    };
-    
-    // 3. Trigger the file browser
-    fileInput.click();
+
+      // Optimistically update the UI
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidateId ? { ...c, resumeUploaded: true } : c))
+      );
+
+      setSuccessMsg('Resume uploaded successfully! AI extraction complete.');
+      setTimeout(() => setSuccessMsg(null), 5000);
+      setSelectedFile(null);
+      setSelectedCandidate(null);
+    } catch (err) {
+      console.error(err);
+      setError('Error uploading resume. Please try again.');
+    } finally {
+      setUploadingResumeId(null);
+    }
   }
 
   return (
@@ -172,10 +175,16 @@ export default function CandidatesPage() {
           <p>{error}</p>
         </div>
       )}
+      
+      {successMsg && (
+        <div className="p-4 bg-green-50 text-green-700 rounded-lg border border-green-200">
+          <p>{successMsg}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Add Candidate Form */}
-        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4 h-fit sticky top-6">
           <h2 className="text-lg font-bold text-gray-800">Add New Candidate</h2>
           <form onSubmit={handleAddCandidate} className="space-y-3">
             <div>
@@ -228,10 +237,10 @@ export default function CandidatesPage() {
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isAddingCandidate}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition disabled:opacity-50"
             >
-              {loading ? 'Adding...' : 'Add Candidate'}
+              {isAddingCandidate ? 'Adding...' : 'Add Candidate'}
             </button>
           </form>
         </div>
@@ -249,56 +258,62 @@ export default function CandidatesPage() {
               {candidates.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">No candidates found. Add one on the left.</div>
               ) : (
-                candidates.map((c) => (
-                  <div key={c.id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-gray-50 transition">
-                    <div>
-                      <p className="font-semibold text-gray-900">{c.firstName} {c.lastName}</p>
-                      <p className="text-xs text-gray-500">{c.email}</p>
-                      {(c.phone || c.linkedinUrl) && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {c.phone && <span className="mr-2">📞 {c.phone}</span>}
-                          {c.linkedinUrl && <span>🔗 LinkedIn</span>}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col sm:items-end gap-2">
-                      <div className="flex items-center gap-3">
-                        {c.resumeUploaded ? (
-                          <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 text-xs px-2.5 py-1 rounded-md font-medium">
-                            ✓ AI Parsed Resume
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setSelectedCandidate(selectedCandidate === c.id ? null : c.id)}
-                            className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium px-3 py-1.5 rounded-md transition"
-                          >
-                            + Upload Resume
-                          </button>
+                candidates.map((c) => {
+                  const hasResume = c.resumeUploaded || (c._count && c._count.resumes > 0);
+                  
+                  return (
+                    <div key={c.id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-gray-50 transition">
+                      <div>
+                        <p className="font-semibold text-gray-900">{c.firstName} {c.lastName}</p>
+                        <p className="text-xs text-gray-500">{c.email}</p>
+                        {(c.phone || c.linkedinUrl) && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {c.phone && <span className="mr-2">📞 {c.phone}</span>}
+                            {c.linkedinUrl && <span>🔗 LinkedIn</span>}
+                          </p>
                         )}
                       </div>
-                      
-                      {/* File Upload Dropdown */}
-                      {selectedCandidate === c.id && !c.resumeUploaded && (
-                        <div className="mt-2 p-2 bg-gray-50 border border-dashed rounded-lg flex items-center justify-between gap-2 max-w-[250px]">
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                            className="text-xs max-w-[150px]"
-                          />
-                          <button
-                            onClick={() => handleResumeUpload(c.id)}
-                            disabled={!selectedFile || loading}
-                            className="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-medium disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {loading ? 'AI Parsing...' : 'Submit PDF'}
-                          </button>
+
+                      <div className="flex flex-col sm:items-end gap-2">
+                        <div className="flex items-center gap-3">
+                          {hasResume ? (
+                            <div className="flex flex-col sm:items-end gap-1">
+                              <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 text-xs px-2.5 py-1 rounded-md font-medium">
+                                ✓ AI Parsed Resume
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedCandidate(selectedCandidate === c.id ? null : c.id)}
+                              className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium px-3 py-1.5 rounded-md transition"
+                            >
+                              + Upload Resume
+                            </button>
+                          )}
                         </div>
-                      )}
+                        
+                        {/* File Upload Dropdown */}
+                        {selectedCandidate === c.id && !hasResume && (
+                          <div className="mt-2 p-2 bg-gray-50 border border-dashed rounded-lg flex items-center justify-between gap-2 max-w-[250px]">
+                            <input
+                              type="file"
+                              accept=".pdf"
+                              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                              className="text-xs max-w-[150px]"
+                            />
+                            <button
+                              onClick={() => handleResumeUpload(c.id)}
+                              disabled={!selectedFile || uploadingResumeId === c.id}
+                              className="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-medium disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {uploadingResumeId === c.id ? 'AI Parsing...' : 'Submit PDF'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
