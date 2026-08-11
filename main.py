@@ -63,7 +63,7 @@ def main():
         }
         
         # Invoke the graph
-        final_state = app.invoke(initial_state, config={"recursion_limit": 25})
+        final_state = app.invoke(initial_state)
         
         # Helper to safely extract attributes whether it's a Pydantic model or a dictionary
         def get_val(obj, key, default=None):
@@ -86,14 +86,13 @@ def main():
         match_score = final_state.get("match_score")
         bias_report = final_state.get("bias_report")
         email_draft = final_state.get("generated_email", "Failed to generate email")
-        interview_schedule = final_state.get("interview_schedule")
 
         name = get_val(parsed_resume, "candidate_name", "Unknown Candidate")
         
         # Ensure score is an integer for sorting
         raw_score = get_val(match_score, "score", 0)
         try:
-            score = int(float(raw_score)) if raw_score is not None else 0
+            score = int(raw_score) if raw_score is not None else 0
         except (ValueError, TypeError):
             score = 0
             
@@ -110,8 +109,7 @@ def main():
             "score": score,
             "reasoning": str(reasoning),
             "bias_concerns": list(bias_concerns) if isinstance(bias_concerns, list) else [],
-            "email_draft": str(email_draft),
-            "interview_schedule": interview_schedule
+            "email_draft": str(email_draft)
         })
         
         print(f"Finished processing {name}\n")
@@ -126,8 +124,6 @@ def main():
         print(f"Reasoning: {res['reasoning']}")
         if res['bias_concerns']:
             print(f"Bias Concerns: {', '.join(res['bias_concerns'])}")
-        if res['interview_schedule']:
-            print(f"Interview Scheduled: {res['interview_schedule']['time']} | Link: {res['interview_schedule']['link']}")
         print(f"Email Draft Preview:\n{res['email_draft']}\n")
         print("-" * 40 + "\n")
 

@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useAuth } from '@clerk/nextjs'
 
 interface Candidate {
   id: string
@@ -28,8 +27,6 @@ export default function CandidatesPage() {
   const [email, setEmail] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   
-  const { getToken } = useAuth()
-  
   const [loading, setLoading] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
 
@@ -54,61 +51,22 @@ export default function CandidatesPage() {
 
   // 2. Upload Resume PDF (POST /api/candidates/:id/resume)
   const handleResumeUpload = async (candidateId: string) => {
-    // 1. Create a hidden file input element dynamically
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.pdf';
-    
-    // 2. Listen for the user selecting a file
-    fileInput.onchange = async (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      
-      setLoading(true);
-      
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const token = await getToken();
-        
-        // POST to the Next.js backend, which will forward to Python
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/candidates/${candidateId}/resume`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-        
-        if (!res.ok) {
-          throw new Error('Failed to upload resume');
-        }
-        
-        setCandidates((prev) =>
-          prev.map((c) => (c.id === candidateId ? { ...c, resumeUploaded: true } : c))
-        );
-        
-        setActivities((prev) => [
-          {
-            id: Date.now().toString(),
-            action: `Uploaded and parsed resume for ${candidates.find(c => c.id === candidateId)?.firstName} ${candidates.find(c => c.id === candidateId)?.lastName}`,
-            timestamp: 'Just now',
-            user: 'You',
-          },
-          ...prev,
-        ]);
-        alert('Resume uploaded successfully! AI extraction complete.');
-      } catch (error) {
-        console.error(error);
-        alert('Error uploading resume. Check console.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // 3. Trigger the file browser
-    fileInput.click();
+    if (!selectedFile) return
+    setLoading(true)
+
+    // Simulate backend multipart/form-data upload & AI extraction
+    const formData = new FormData()
+    formData.append('file', selectedFile)
+
+    setTimeout(() => {
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidateId ? { ...c, resumeUploaded: true } : c))
+      )
+      setSelectedFile(null)
+      setSelectedCandidate(null)
+      setLoading(false)
+      alert('Resume uploaded successfully! AI extraction complete.')
+    }, 1500)
   }
 
   return (

@@ -3,7 +3,6 @@ import { routeHandler } from "@/shared/utils/route-handler";
 import { createdResponse } from "@/shared/utils/api-response";
 import { prisma } from "@/infrastructure/database/prisma.client";
 import { vercelBlobStorage } from "@/infrastructure/storage/vercel-blob.storage";
-import { aiClient } from "@/infrastructure/ai/ai-client";
 import { candidatesRepository } from "@/modules/candidates/candidates.repository";
 import { NotFoundError, AppError } from "@/shared/errors";
 import { APP_CONSTANTS } from "@/config";
@@ -54,17 +53,10 @@ export const POST = routeHandler(
     }
 
     // Upload to storage
-    let url = "";
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const result = await vercelBlobStorage.upload(file, file.name, {
-        contentType: file.type,
-        folder: `resumes/${auth.companyId}`,
-      });
-      url = result.url;
-    } else {
-      logger.warn("BLOB_READ_WRITE_TOKEN not found, skipping Vercel Blob upload");
-      url = `local://${file.name}`;
-    }
+    const { url } = await vercelBlobStorage.upload(file, file.name, {
+      contentType: file.type,
+      folder: `resumes/${auth.companyId}`,
+    });
 
     // Create resume record
     const resume = await prisma.resume.create({
@@ -76,26 +68,6 @@ export const POST = routeHandler(
         mimeType: file.type,
       },
     });
-    
-    // Parse the resume using the Python AI agent
-    try {
-      const aiParsedData = await aiClient.uploadAndParseResume(file);
-      
-      await prisma.resume.update({
-        where: { id: resume.id },
-        data: {
-          parsedContent: JSON.parse(JSON.stringify(aiParsedData)),
-          skills: aiParsedData.skills || []
-        }
-      });
-      
-      // Also update candidate with skills from resume if they don't have it
-      // For simplicity, we just attach it to the resume right now.
-      
-    } catch (error) {
-      logger.error("Failed to parse resume with AI Agent", error);
-      // We don't fail the whole request if AI parsing fails, as the file was uploaded successfully.
-    }
 
     logger.info(
       { resumeId: resume.id, candidateId: params.id, fileName: file.name },

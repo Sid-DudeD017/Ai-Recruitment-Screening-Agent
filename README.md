@@ -1,6 +1,6 @@
-# 🤖 AI Recruitment Screening Agent (Full Stack)
+# 🤖 AI Recruitment Screening Agent
 
-An intelligent, multi-stage AI platform that automates candidate screening. The platform features a **Next.js Frontend UI**, a **Next.js Backend API** powered by a Neon Postgres Database and Clerk Authentication, and a **Python FastAPI Agent** built with LangGraph, LangChain, and OpenAI to handle intelligent PDF parsing, candidate matching, and email generation.
+An intelligent, multi-stage AI pipeline that automates candidate screening — from parsing job descriptions and resumes to matching, bias detection, and email generation. Built with **LangGraph**, **LangChain**, and **Ollama (local LLMs)**.
 
 ---
 
@@ -8,99 +8,206 @@ An intelligent, multi-stage AI platform that automates candidate screening. The 
 
 | Feature | Description |
 |---|---|
-| 🔒 **Authentication** | Secure user login and management via **Clerk**. |
-| 🗄️ **Database** | Fully typed schema with **Prisma** and **Neon Database (Postgres)**. |
-| 📄 **Resume PDF Uploads** | Upload real PDF resumes from the UI. The Backend forwards the files to the Python API where they are processed via OCR (`pdfplumber`). |
-| 📝 **Intelligent Resume Parsing** | Identifies candidate name, skills, years of experience, and education from raw resume text using OpenAI LLMs. |
-| 🎯 **Candidate Matching (FAISS Vector Store)** | Scores each candidate (0–100) based on how well they fit the job requirements, leveraging an integrated scoring system and semantic search. |
-| ⚖️ **Bias Detection** | AI reviews match reasoning for potential bias (gender, race, age, education-tier bias, etc.). |
-| ✉️ **Email Generation** | Auto-drafts a professional outreach or rejection email based on the match outcome. |
+| 📄 **JD Parsing** | Extracts must-have skills, nice-to-have skills, experience requirements, and job title from any job description |
+| 📝 **Resume Parsing** | Identifies candidate name, skills, years of experience, and education from raw resume text |
+| 🎯 **Candidate Matching** | Scores each candidate 0–100 based on how well they fit the job requirements, with qualitative reasoning |
+| ⚖️ **Bias Detection** | Reviews match reasoning for potential bias (gender, race, age, education-tier bias, etc.) |
+| ✉️ **Email Generation** | Auto-drafts a professional outreach or rejection email based on the match outcome |
+| 🏆 **Candidate Ranking** | Ranks all processed candidates by score for easy shortlisting |
 
 ---
 
 ## 🏗️ Architecture
 
-The platform is split into three main components that run concurrently:
+The agent is implemented as a **LangGraph state machine** where each stage is a dedicated node. The graph processes one candidate at a time through a sequential pipeline, with the final two steps (bias detection and email generation) running after matching.
 
-1. **Frontend (Next.js - Port 3000)**: Displays candidate lists, job matching UI, and a drag-and-drop file uploader for resumes.
-2. **Backend (Next.js - Port 3001)**: Handles authentication validation, Prisma database connections, optionally Vercel Blob Storage for files, and forwards AI tasks to the Python Agent.
-3. **AI Agent (Python FastAPI - Port 8000)**: Runs the LangGraph state machine. It accepts uploaded PDFs, extracts text, runs the LLM screening pipeline, and returns structured JSON (Pydantic models) back to the Backend.
+```
+                  ┌─────────────────┐
+                  │   START (Input) │
+                  └────────┬────────┘
+                           │
+                    ┌──────▼──────┐
+                    │  parse_jd   │  ← Extracts structured data from Job Description
+                    └──────┬──────┘
+                           │
+                   ┌───────▼───────┐
+                   │ parse_resume  │  ← Extracts structured data from Resume
+                   └───────┬───────┘
+                           │
+                  ┌────────▼────────┐
+                  │ match_candidate │  ← Scores candidate fit (0–100) with reasoning
+                  └────────┬────────┘
+                      ┌────┴────┐
+                      │        │
+               ┌──────▼──┐ ┌───▼──────────┐
+               │detect_  │ │  generate_   │
+               │  bias   │ │    email     │
+               └──────┬──┘ └───┬──────────┘
+                      │        │
+                      └───┬────┘
+                      ┌───▼───┐
+                      │  END  │
+                      └───────┘
+```
+
+### Graph State
+
+Each node reads from and writes to a shared `GraphState` object:
+
+| Field | Type | Description |
+|---|---|---|
+| `job_description_text` | `str` | Raw job description input |
+| `resume_text` | `str` | Raw resume input |
+| `parsed_job` | `JobRequirements` | Structured job data (title, skills, experience) |
+| `parsed_resume` | `ResumeData` | Structured resume data (name, skills, experience, education) |
+| `match_score` | `MatchScore` | Score (0–100) + reasoning |
+| `bias_report` | `BiasReport` | Bias detected flag + list of concerns |
+| `generated_email` | `str` | Draft outreach/rejection email |
 
 ---
 
-## 🚀 Getting Started Locally
+## 📁 Project Structure
+
+```
+Ai-Recruitment-Screening-Agent/
+├── main.py                          # Entry point: batch processes candidates & ranks results
+├── requirements.txt                 # Python dependencies
+├── .env                             # Environment variables (Ollama model, base URL)
+├── pyrightconfig.json               # Pyright / VS Code type-checking config
+│
+└── ai_recruitment_agent/
+    ├── __init__.py
+    ├── graph.py                     # Builds & compiles the LangGraph workflow
+    ├── llm.py                       # Ollama LLM factory (model & base URL config)
+    ├── state.py                     # Pydantic models & GraphState TypedDict
+    │
+    └── nodes/
+        ├── __init__.py
+        ├── jd_parser.py             # Node: parse job description → JobRequirements
+        ├── resume_parser.py         # Node: parse resume → ResumeData
+        ├── matcher.py               # Node: score candidate fit → MatchScore
+        ├── bias_detector.py         # Node: audit reasoning for bias → BiasReport
+        └── email_generator.py       # Node: draft candidate email → str
+```
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Node.js** (v18+)
-- **Python** (3.9+)
-- **Keys**: You will need an OpenAI API key, a Clerk account (Publishable/Secret keys), and a Postgres connection string (e.g., from Neon).
-
-### 1. Installation
-
-Clone the repository and install all dependencies for the 3 services:
+- Python 3.9+
+- [Ollama](https://ollama.com/) installed and running locally
+- A pulled Ollama model (default: `llama3`)
 
 ```bash
-# 1. Setup Python Agent
+# Pull the default model
+ollama pull llama3
+
+# Verify Ollama is running
+ollama serve
+```
+
+### Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/Ai-Recruitment-Screening-Agent.git
+cd Ai-Recruitment-Screening-Agent
+
+# 2. Create and activate a virtual environment
 python3 -m venv venv
 source venv/bin/activate        # macOS/Linux
+# venv\Scripts\activate         # Windows
+
+# 3. Install dependencies
 pip install -r requirements.txt
-
-# 2. Setup Next.js Backend
-cd Backend
-npm install
-
-# 3. Setup Next.js Frontend
-cd ../frontend
-npm install
-cd ..
 ```
 
-### 2. Environment Variables
+### Configuration
 
-You need to set up three environment files.
+Create a `.env` file in the project root (one is already included):
 
-**1. Root Directory (`.env`)**
-Create a `.env` file in the root for the Python Agent:
 ```env
-OPENAI_API_KEY=sk-proj-...
+# Ollama model to use (default: llama3)
+OLLAMA_MODEL=llama3
+
+# Ollama server URL (default: http://localhost:11434)
+OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-**2. Backend Directory (`Backend/.env`)**
-Create a `.env` file in the `Backend` folder:
-```env
-NODE_ENV=development
-DATABASE_URL=postgres://your-neon-url...
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-CLERK_WEBHOOK_SECRET=whsec_...
-AI_SERVICE_URL=http://localhost:8000
-# (Optional) BLOB_READ_WRITE_TOKEN=...
-```
-
-**3. Frontend Directory (`frontend/.env.local`)**
-Create a `.env.local` file in the `frontend` folder:
-```env
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_API_URL=http://localhost:3001/api
-```
-
-### 3. Start the Platform
-
-A unified startup script `start.sh` is provided in the root directory to boot all 3 services at once and automatically sync your database schema.
+### Run
 
 ```bash
-chmod +x start.sh
-./start.sh
+python main.py
 ```
 
-**What this does:**
-1. Starts the **Python API** on `http://localhost:8000`
-2. Runs `npx prisma db push` and starts the **Next.js Backend** on `http://localhost:3001`
-3. Starts the **Next.js Frontend** on `http://localhost:3000`
+The script will process the sample candidates defined in `main.py` and print a ranked leaderboard with scores, reasoning, bias concerns, and email drafts.
 
-You can now open your browser to `http://localhost:3000` and test out the platform! Upload a real PDF resume on the Candidates page to watch the end-to-end extraction and database syncing in action.
+---
+
+## 📊 Example Output
+
+```
+========== STARTING BATCH PROCESSING ==========
+
+--- Processing Candidate 1 ---
+--- PARSING JOB DESCRIPTION ---
+--- PARSING RESUME ---
+--- MATCHING CANDIDATE: Alice Smith ---
+--- DETECTING BIAS FOR: Alice Smith ---
+--- GENERATING EMAIL FOR: Alice Smith ---
+Finished processing Alice Smith
+
+...
+
+========== AGGREGATION & RANKING ==========
+
+Rank 1: Carol White - Score: 92/100
+Reasoning: Strong match across must-have and nice-to-have skills...
+Email Draft Preview:
+  Dear Carol, We are pleased to invite you for an interview...
+
+----------------------------------------
+
+Rank 2: Alice Smith - Score: 78/100
+...
+```
+
+---
+
+## 🔧 Customisation
+
+### Use a Different LLM
+
+Change the model in your `.env` or pass it explicitly:
+
+```python
+from ai_recruitment_agent.llm import get_llm
+
+llm = get_llm(model="mistral", temperature=0.2)
+```
+
+Any model available via `ollama list` can be used.
+
+### Add Your Own Job Description & Resumes
+
+Edit `main.py` and replace `SAMPLE_JD` and `SAMPLE_RESUMES` with your own data, or load them from files:
+
+```python
+with open("job_description.txt") as f:
+    SAMPLE_JD = f.read()
+
+import glob
+SAMPLE_RESUMES = [open(p).read() for p in glob.glob("resumes/*.txt")]
+```
+
+### Extend the Pipeline
+
+Add a new node by:
+1. Creating a new file in `ai_recruitment_agent/nodes/`
+2. Adding the node to the graph in `graph.py`
+3. Adding the relevant field(s) to `GraphState` in `state.py`
 
 ---
 
@@ -108,14 +215,11 @@ You can now open your browser to `http://localhost:3000` and test out the platfo
 
 | Library | Purpose |
 |---|---|
-| **Next.js / React** | Full-stack web framework |
-| **Prisma & Neon** | Database ORM and Serverless Postgres |
-| **Clerk** | Authentication & User Management |
-| **FastAPI** | High-performance Python API Server |
-| **LangGraph / LangChain** | Stateful, graph-based agent orchestration |
-| **OpenAI / FAISS** | LLM inference and Vector Store semantic search |
-| **pdfplumber / python-multipart** | Raw file upload handling and OCR text extraction |
-| **Pydantic** | Data validation and structured output schemas |
+| [LangGraph](https://github.com/langchain-ai/langgraph) | Stateful, graph-based agent orchestration |
+| [LangChain](https://github.com/langchain-ai/langchain) | LLM abstraction, prompt templates, structured output |
+| [langchain-ollama](https://github.com/langchain-ai/langchain-ollama) | Ollama integration for local LLM inference |
+| [Pydantic](https://docs.pydantic.dev/) | Data validation and structured output schemas |
+| [python-dotenv](https://github.com/theskumar/python-dotenv) | Environment variable management |
 
 ---
 
