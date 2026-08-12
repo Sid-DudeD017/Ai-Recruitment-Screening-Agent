@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from src.config.settings import settings
 from src.graph.state import GraphState
 from src.schemas.agent_schemas import OrchestratorDecision
@@ -7,10 +7,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_llm():
-    return ChatOpenAI(
-        model=settings.OPENAI_MODEL,
+    return ChatGoogleGenerativeAI(
+        model=settings.GEMINI_MODEL,
         temperature=0,
-        openai_api_key=settings.OPENAI_API_KEY
+        google_api_key=settings.GEMINI_API_KEY
     )
 
 def orchestrate(state: GraphState) -> dict:

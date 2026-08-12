@@ -57,10 +57,10 @@ Ranks multiple candidate evaluations.
    ```bash
    pip install -r requirements.txt
    ```
-2. Create a `.env` file with your OpenAI key:
+2. Create a `.env` file with your Google Gemini key:
    ```
-   OPENAI_API_KEY=sk-...
-   OPENAI_MODEL=gpt-4o
+   GEMINI_API_KEY=AIzaSy...
+   GEMINI_MODEL=gemini-1.5-flash
    APP_PORT=8000
    ```
 3. Run the FastAPI server:

@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
 
 settings = Settings()
