@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@clerk/nextjs'
-import Link from 'next/link'
+import JSZip from 'jszip'
 
 interface Job {
   id: string
@@ -27,23 +27,16 @@ export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
   
-  // Form State
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [linkedinUrl, setLinkedinUrl] = useState('')
-  
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  
   const { getToken } = useAuth()
   
-  const [isAddingCandidate, setIsAddingCandidate] = useState(false)
-  const [uploadingResumeId, setUploadingResumeId] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
-  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
+  
+  // Bulk Upload State
+  const [isDragging, setIsDragging] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ total: number, current: number, currentFileName: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Apply to Job State
   const [applyingCandidateId, setApplyingCandidateId] = useState<string | null>(null)
@@ -81,105 +74,127 @@ export default function CandidatesPage() {
     fetchCandidates()
   }, [getToken])
 
-  // 1. Add Candidate (POST /api/candidates)
-  const handleAddCandidate = async (e: React.FormEvent) => {
+  // Bulk Upload Handlers
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
-    if (!firstName || !lastName || !email) return
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    await processFiles(files)
+  }
 
-    setIsAddingCandidate(true)
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      await processFiles(files)
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+  
+  const processFiles = async (files: File[]) => {
+    let filesToUpload: File[] = []
+    
+    for (const file of files) {
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        try {
+          const zip = new JSZip()
+          const contents = await zip.loadAsync(file)
+          for (const [filename, zipEntry] of Object.entries(contents.files)) {
+            // Ignore directories, macosx metadata, and hidden files (e.g. ._resume.pdf)
+            const isHidden = filename.split('/').pop()?.startsWith('._');
+            if (!zipEntry.dir && !filename.includes('__MACOSX') && !isHidden) {
+              const lowerName = filename.toLowerCase()
+              if (lowerName.endsWith('.pdf') || lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
+                const blob = await zipEntry.async('blob')
+                const basename = filename.split('/').pop() || filename
+                const mimeType = lowerName.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                filesToUpload.push(new File([blob], basename, { type: mimeType }))
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to parse zip", err)
+          setError("Failed to parse ZIP file.")
+        }
+      } else {
+        const lowerName = file.name.toLowerCase()
+        if (lowerName.endsWith('.pdf') || lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
+           filesToUpload.push(file)
+        }
+      }
+    }
+    
+    if (filesToUpload.length === 0) {
+      setError("No valid resumes (.pdf, .docx) found in the selection.")
+      return
+    }
+    
     setError(null)
     setSuccessMsg(null)
+    setUploadProgress({ total: filesToUpload.length, current: 0, currentFileName: '' })
     
-    try {
-      const token = await getToken()
-      if (!token) throw new Error("Authentication required")
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    
+    let successCount = 0;
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const uploadFile = filesToUpload[i]
+      setUploadProgress(prev => prev ? { ...prev, current: i, currentFileName: uploadFile.name } : null)
       
-      const payload = {
-        firstName,
-        lastName,
-        email,
-        phone: phone || undefined,
-        linkedinUrl: linkedinUrl || undefined
+      try {
+        const formData = new FormData()
+        formData.append('file', uploadFile)
+        
+        // Fetch a fresh token for EACH file because the loop can take several minutes and Clerk tokens expire quickly (60s)
+        const freshToken = await getToken()
+        
+        const res = await fetch(`${baseUrl}/candidates/auto-parse`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${freshToken}` },
+          body: formData
+        })
+        
+        if (res.ok) {
+          const json = await res.json()
+          if (json.data?.candidate) {
+            // Add property to instantly show AI tag
+            const newCand = { ...json.data.candidate, resumeUploaded: true }
+            setCandidates(prev => {
+              const exists = prev.find(c => c.id === newCand.id);
+              if (exists) {
+                return prev.map(c => c.id === newCand.id ? newCand : c);
+              }
+              return [newCand, ...prev];
+            })
+            successCount++
+          }
+        } else {
+            const errData = await res.json().catch(() => null)
+            const errMsg = errData?.error?.message || errData?.message || `HTTP ${res.status}`
+            console.error(`Backend returned error for ${uploadFile.name}: ${errMsg}`)
+            setError(prev => prev ? `${prev} | ${uploadFile.name}: ${errMsg}` : `Error on ${uploadFile.name}: ${errMsg}`)
+        }
+      } catch (err) {
+        console.error("Upload failed for", uploadFile.name, err)
+        setError(prev => prev ? `${prev} | ${uploadFile.name}: Network Error` : `Network error on ${uploadFile.name}`)
       }
-
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-      const res = await fetch(`${baseUrl}/candidates`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null)
-        throw new Error(errData?.error?.message || 'Failed to create candidate')
-      }
-
-      const json = await res.json()
-      setCandidates((prev) => [json.data, ...prev])
       
-      setFirstName('')
-      setLastName('')
-      setEmail('')
-      setPhone('')
-      setLinkedinUrl('')
-      setSuccessMsg('Candidate added successfully!')
-      setTimeout(() => setSuccessMsg(null), 3000)
-    } catch (err) {
-      console.error(err)
-      setError(err instanceof Error ? err.message : 'Failed to create candidate')
-    } finally {
-      setIsAddingCandidate(false)
+      // Delay for 4 seconds between uploads to respect Gemini API free tier rate limits (15 RPM)
+      if (i < filesToUpload.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 4000));
+      }
+    }
+    
+    setUploadProgress(null)
+    if (successCount === filesToUpload.length) {
+      setSuccessMsg(`Successfully extracted and parsed ${successCount} resumes!`)
+      setTimeout(() => setSuccessMsg(null), 5000)
+    } else {
+      setError(prev => prev 
+        ? `Successfully processed ${successCount} out of ${filesToUpload.length} resumes. Details: ${prev}` 
+        : `Successfully processed ${successCount} out of ${filesToUpload.length} resumes. Some failed.`)
     }
   }
 
-  // 2. Upload Resume PDF (POST /api/candidates/:id/resume)
-  const handleResumeUpload = async (candidateId: string) => {
-    if (!selectedFile) return;
-
-    setUploadingResumeId(candidateId);
-    setError(null);
-    setSuccessMsg(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      const token = await getToken();
-
-      // POST to the backend
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/candidates/${candidateId}/resume`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to upload resume');
-      }
-
-      // Optimistically update the UI
-      setCandidates((prev) =>
-        prev.map((c) => (c.id === candidateId ? { ...c, resumeUploaded: true } : c))
-      );
-
-      setSuccessMsg('Resume uploaded successfully! AI extraction complete.');
-      setTimeout(() => setSuccessMsg(null), 5000);
-      setSelectedFile(null);
-      setSelectedCandidate(null);
-    } catch (err) {
-      console.error(err);
-      setError('Error uploading resume. Please try again.');
-    } finally {
-      setUploadingResumeId(null);
-    }
-  }
-
-  // 3. Apply Candidate to Job (POST /api/applications)
+  // Apply Candidate to Job
   const handleApplyToJob = async (candidateId: string) => {
     if (!selectedJobId) {
       setError("Please select a job to apply to.");
@@ -224,10 +239,10 @@ export default function CandidatesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-5xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Candidate Directory</h1>
-        <p className="text-gray-500">Add candidates manually and upload PDF resumes for AI processing.</p>
+        <p className="text-gray-500">Autonomous Bulk Processing Zone. Drop resumes below to auto-extract data.</p>
       </div>
 
       {error && (
@@ -242,171 +257,128 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Add Candidate Form */}
-        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4 h-fit sticky top-6">
-          <h2 className="text-lg font-bold text-gray-800">Add New Candidate</h2>
-          <form onSubmit={handleAddCandidate} className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700">First Name</label>
-              <input
-                type="text"
-                required
-                className="mt-1 w-full border rounded-lg p-2 text-sm"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
+      {/* Bulk Upload Dropzone */}
+      <div 
+        className={`border-2 border-dashed rounded-xl p-10 text-center transition ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+      >
+        <input 
+          type="file" 
+          multiple 
+          accept=".zip,.pdf" 
+          className="hidden" 
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+        />
+        
+        {uploadProgress ? (
+          <div className="max-w-md mx-auto space-y-4">
+            <h3 className="font-bold text-gray-900 text-lg">AI Parsing Resumes...</h3>
+            <p className="text-sm text-gray-500">Extracting: {uploadProgress.currentFileName}</p>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-indigo-600 h-3 rounded-full transition-all duration-300" 
+                style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+              ></div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700">Last Name</label>
-              <input
-                type="text"
-                required
-                className="mt-1 w-full border rounded-lg p-2 text-sm"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700">Email Address</label>
-              <input
-                type="email"
-                required
-                className="mt-1 w-full border rounded-lg p-2 text-sm"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700">Phone (Optional)</label>
-              <input
-                type="tel"
-                className="mt-1 w-full border rounded-lg p-2 text-sm"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700">LinkedIn URL (Optional)</label>
-              <input
-                type="url"
-                className="mt-1 w-full border rounded-lg p-2 text-sm"
-                value={linkedinUrl}
-                onChange={(e) => setLinkedinUrl(e.target.value)}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isAddingCandidate}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition disabled:opacity-50"
-            >
-              {isAddingCandidate ? 'Adding...' : 'Add Candidate'}
-            </button>
-          </form>
-        </div>
-
-        {/* Right: Candidate List & Drag-and-Drop Resume Uploader */}
-        <div className="lg:col-span-2 bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[400px]">
-          <div className="p-4 border-b bg-gray-50">
-            <h2 className="font-bold text-gray-800">All Candidates</h2>
+            <p className="text-xs font-semibold text-indigo-700">{uploadProgress.current} / {uploadProgress.total} completed</p>
           </div>
-          
-          {pageLoading ? (
-            <div className="p-8 text-center text-gray-500 animate-pulse">Loading candidates...</div>
-          ) : (
-            <div className="divide-y text-sm">
-              {candidates.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">No candidates found. Add one on the left.</div>
-              ) : (
-                candidates.map((c) => {
-                  const hasResume = c.resumeUploaded || (c._count && c._count.resumes > 0);
-                  
-                  return (
-                    <div key={c.id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-gray-50 transition">
-                      <div>
-                        <p className="font-semibold text-gray-900">{c.firstName} {c.lastName}</p>
-                        <p className="text-xs text-gray-500">{c.email}</p>
-                        {(c.phone || c.linkedinUrl) && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            {c.phone && <span className="mr-2">📞 {c.phone}</span>}
-                            {c.linkedinUrl && <span>🔗 LinkedIn</span>}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col sm:items-end gap-2">
-                        <div className="flex items-center gap-3">
-                          {hasResume ? (
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 text-xs px-2.5 py-1 rounded-md font-medium">
-                                ✓ AI Parsed Resume
-                              </span>
-                              <button
-                                onClick={() => setApplyingCandidateId(applyingCandidateId === c.id ? null : c.id)}
-                                className="bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-xs font-medium px-3 py-1.5 rounded-md transition"
-                              >
-                                Apply to Job
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setSelectedCandidate(selectedCandidate === c.id ? null : c.id)}
-                              className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium px-3 py-1.5 rounded-md transition"
-                            >
-                              + Upload Resume
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* Job Apply Dropdown */}
-                        {applyingCandidateId === c.id && (
-                          <div className="mt-2 p-2 bg-gray-50 border border-dashed rounded-lg flex items-center justify-between gap-2 min-w-[250px]">
-                            <select
-                              value={selectedJobId}
-                              onChange={(e) => setSelectedJobId(e.target.value)}
-                              className="text-xs p-1.5 border rounded flex-1"
-                            >
-                              <option value="">Select a job...</option>
-                              {jobs.map(job => (
-                                <option key={job.id} value={job.id}>{job.title}</option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => handleApplyToJob(c.id)}
-                              disabled={!selectedJobId || isApplying}
-                              className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] px-3 py-1.5 rounded font-medium disabled:opacity-50 whitespace-nowrap"
-                            >
-                              {isApplying ? 'Applying...' : 'Apply'}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* File Upload Dropdown */}
-                        {selectedCandidate === c.id && !hasResume && (
-                          <div className="mt-2 p-2 bg-gray-50 border border-dashed rounded-lg flex items-center justify-between gap-2 max-w-[250px]">
-                            <input
-                              type="file"
-                              accept=".pdf"
-                              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                              className="text-xs max-w-[150px]"
-                            />
-                            <button
-                              onClick={() => handleResumeUpload(c.id)}
-                              disabled={!selectedFile || uploadingResumeId === c.id}
-                              className="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-medium disabled:opacity-50 whitespace-nowrap"
-                            >
-                              {uploadingResumeId === c.id ? 'AI Parsing...' : 'Submit PDF'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <div className="bg-indigo-100 p-4 rounded-full">
+              <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+              </svg>
             </div>
-          )}
+            <div>
+              <p className="font-semibold text-gray-900 text-lg">Drag & Drop Resumes Here</p>
+              <p className="text-sm text-gray-500 mt-1">Upload a <span className="font-bold text-gray-700">.zip</span> file containing multiple PDFs, or select multiple <span className="font-bold text-gray-700">.pdf</span> files directly.</p>
+            </div>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-4 px-6 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition"
+            >
+              Browse Files
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Candidate List */}
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+          <h2 className="font-bold text-gray-800">All Candidates ({candidates.length})</h2>
         </div>
+        
+        {pageLoading ? (
+          <div className="p-12 text-center text-gray-500 animate-pulse">Loading candidates...</div>
+        ) : (
+          <div className="divide-y text-sm">
+            {candidates.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">No candidates found. Drop some resumes above to begin.</div>
+            ) : (
+              candidates.map((c) => {
+                const hasResume = c.resumeUploaded || (c._count && c._count.resumes > 0);
+                
+                return (
+                  <div key={c.id} className="p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-gray-50 transition">
+                    <div>
+                      <p className="font-bold text-gray-900 text-base">{c.firstName} {c.lastName}</p>
+                      <p className="text-sm text-gray-500 mt-1">{c.email}</p>
+                      {(c.phone || c.linkedinUrl) && (
+                        <p className="text-xs text-gray-500 mt-2 flex gap-4">
+                          {c.phone && <span>📞 {c.phone}</span>}
+                          {c.linkedinUrl && <a href={c.linkedinUrl} target="_blank" className="text-blue-600 hover:underline">🔗 LinkedIn</a>}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        {hasResume && (
+                          <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 text-xs px-2.5 py-1.5 rounded-md font-medium">
+                            ✓ AI Parsed Resume
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setApplyingCandidateId(applyingCandidateId === c.id ? null : c.id)}
+                          className="bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-sm font-medium px-4 py-2 rounded-lg transition"
+                        >
+                          Apply to Job
+                        </button>
+                      </div>
+                      
+                      {/* Job Apply Dropdown */}
+                      {applyingCandidateId === c.id && (
+                        <div className="mt-2 p-3 bg-white shadow-lg border rounded-xl flex items-center justify-between gap-3 min-w-[300px]">
+                          <select
+                            value={selectedJobId}
+                            onChange={(e) => setSelectedJobId(e.target.value)}
+                            className="text-sm p-2 border rounded-lg flex-1 bg-gray-50"
+                          >
+                            <option value="">Select an open position...</option>
+                            {jobs.map(job => (
+                              <option key={job.id} value={job.id}>{job.title}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleApplyToJob(c.id)}
+                            disabled={!selectedJobId || isApplying}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {isApplying ? 'Applying...' : 'Confirm'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

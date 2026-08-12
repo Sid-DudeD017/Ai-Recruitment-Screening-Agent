@@ -156,23 +156,31 @@ async def parse_resume_endpoint(request: ParseResumeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+import docx
+
 @router.post("/upload-and-parse-resume")
 async def upload_and_parse_resume_endpoint(file: UploadFile = File(...)):
     try:
-        # Extract text from the uploaded PDF
-
         content = await file.read()
-        reader = PdfReader(BytesIO(content))
         resume_text = ""
-        for page in reader.pages:
-            resume_text += page.extract_text() + "\n"
-        print(resume_text)
+        
+        if file.filename.lower().endswith(".docx") or file.filename.lower().endswith(".doc"):
+            doc = docx.Document(BytesIO(content))
+            for para in doc.paragraphs:
+                resume_text += para.text + "\n"
+        else:
+            reader = PdfReader(BytesIO(content))
+            for page in reader.pages:
+                resume_text += page.extract_text() + "\n"
+
         print("BEFORE parse_resume_node")
         res = parse_resume_node({"resume_text": resume_text, "candidate_metadata": {"fileName": file.filename}})
         print("AFTER parse_resume_node")
         return res.get("parsed_resume", {})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to parse resume: {str(e)}")
 
 @router.post("/analyze-job")
 async def analyze_job_endpoint(request: AnalyzeJobRequest):

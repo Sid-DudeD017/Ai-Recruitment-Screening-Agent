@@ -1,6 +1,7 @@
 export const ApplicationStatus = {
   APPLIED: "APPLIED",
   SCREENING: "SCREENING",
+  PENDING_REVIEW: "PENDING_REVIEW",
   SHORTLISTED: "SHORTLISTED",
   INTERVIEW: "INTERVIEW",
   OFFERED: "OFFERED",
@@ -15,8 +16,9 @@ export type ApplicationStatusType =
  * Valid forward transitions. REJECTED can be reached from any non-terminal state.
  */
 export const VALID_TRANSITIONS: Record<string, string[]> = {
-  APPLIED: ["SCREENING", "REJECTED"],
-  SCREENING: ["SHORTLISTED", "REJECTED"],
+  APPLIED: ["SCREENING", "PENDING_REVIEW", "REJECTED"],
+  SCREENING: ["PENDING_REVIEW", "SHORTLISTED", "REJECTED"],
+  PENDING_REVIEW: ["SHORTLISTED", "INTERVIEW", "REJECTED"],
   SHORTLISTED: ["INTERVIEW", "REJECTED"],
   INTERVIEW: ["OFFERED", "REJECTED"],
   OFFERED: ["HIRED", "REJECTED"],
