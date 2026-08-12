@@ -4,6 +4,11 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 
+interface Job {
+  id: string
+  title: string
+}
+
 interface Candidate {
   id: string
   firstName: string
@@ -20,6 +25,7 @@ interface Candidate {
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [jobs, setJobs] = useState<Job[]>([])
   
   // Form State
   const [firstName, setFirstName] = useState('')
@@ -39,6 +45,11 @@ export default function CandidatesPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
 
+  // Apply to Job State
+  const [applyingCandidateId, setApplyingCandidateId] = useState<string | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<string>('')
+  const [isApplying, setIsApplying] = useState(false)
+
   useEffect(() => {
     async function fetchCandidates() {
       try {
@@ -47,14 +58,19 @@ export default function CandidatesPage() {
         if (!token) return
 
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-        const res = await fetch(`${baseUrl}/candidates`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        const [candidatesRes, jobsRes] = await Promise.all([
+          fetch(`${baseUrl}/candidates`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${baseUrl}/jobs`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ])
 
-        if (!res.ok) throw new Error('Failed to fetch candidates')
+        if (!candidatesRes.ok) throw new Error('Failed to fetch candidates')
+        if (!jobsRes.ok) throw new Error('Failed to fetch jobs')
 
-        const json = await res.json()
-        setCandidates(json.data || [])
+        const candidatesJson = await candidatesRes.json()
+        const jobsJson = await jobsRes.json()
+        
+        setCandidates(candidatesJson.data || [])
+        setJobs(jobsJson.data || [])
       } catch (err) {
         console.error(err)
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -160,6 +176,50 @@ export default function CandidatesPage() {
       setError('Error uploading resume. Please try again.');
     } finally {
       setUploadingResumeId(null);
+    }
+  }
+
+  // 3. Apply Candidate to Job (POST /api/applications)
+  const handleApplyToJob = async (candidateId: string) => {
+    if (!selectedJobId) {
+      setError("Please select a job to apply to.");
+      return;
+    }
+
+    setIsApplying(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Authentication required");
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/applications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          candidateId,
+          jobId: selectedJobId
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error?.message || 'Failed to create application');
+      }
+
+      setSuccessMsg('Successfully applied candidate to job!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+      setApplyingCandidateId(null);
+      setSelectedJobId('');
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Error applying to job');
+    } finally {
+      setIsApplying(false);
     }
   }
 
@@ -277,10 +337,16 @@ export default function CandidatesPage() {
                       <div className="flex flex-col sm:items-end gap-2">
                         <div className="flex items-center gap-3">
                           {hasResume ? (
-                            <div className="flex flex-col sm:items-end gap-1">
+                            <div className="flex items-center gap-2">
                               <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 text-xs px-2.5 py-1 rounded-md font-medium">
                                 ✓ AI Parsed Resume
                               </span>
+                              <button
+                                onClick={() => setApplyingCandidateId(applyingCandidateId === c.id ? null : c.id)}
+                                className="bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-xs font-medium px-3 py-1.5 rounded-md transition"
+                              >
+                                Apply to Job
+                              </button>
                             </div>
                           ) : (
                             <button
@@ -292,6 +358,29 @@ export default function CandidatesPage() {
                           )}
                         </div>
                         
+                        {/* Job Apply Dropdown */}
+                        {applyingCandidateId === c.id && (
+                          <div className="mt-2 p-2 bg-gray-50 border border-dashed rounded-lg flex items-center justify-between gap-2 min-w-[250px]">
+                            <select
+                              value={selectedJobId}
+                              onChange={(e) => setSelectedJobId(e.target.value)}
+                              className="text-xs p-1.5 border rounded flex-1"
+                            >
+                              <option value="">Select a job...</option>
+                              {jobs.map(job => (
+                                <option key={job.id} value={job.id}>{job.title}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleApplyToJob(c.id)}
+                              disabled={!selectedJobId || isApplying}
+                              className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] px-3 py-1.5 rounded font-medium disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {isApplying ? 'Applying...' : 'Apply'}
+                            </button>
+                          </div>
+                        )}
+
                         {/* File Upload Dropdown */}
                         {selectedCandidate === c.id && !hasResume && (
                           <div className="mt-2 p-2 bg-gray-50 border border-dashed rounded-lg flex items-center justify-between gap-2 max-w-[250px]">

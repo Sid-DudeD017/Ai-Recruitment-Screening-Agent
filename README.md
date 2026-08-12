@@ -1,6 +1,6 @@
 # 🤖 AI Recruitment Screening Agent (Full Stack)
 
-An intelligent, multi-stage AI platform that automates candidate screening. The platform features a **Next.js Frontend UI**, a **Next.js Backend API** powered by a Neon Postgres Database and Clerk Authentication, and a **Python FastAPI Agent** built with LangGraph, LangChain, and OpenAI to handle intelligent PDF parsing, candidate matching, and email generation.
+An intelligent, multi-stage AI platform that automates candidate screening. The platform features a **Next.js Frontend UI**, a **Next.js Backend API** powered by a Neon Postgres Database and Clerk Authentication, and a **Python FastAPI Agent** built with LangGraph, LangChain, and Google Gemini to handle intelligent PDF parsing, candidate matching, and email generation.
 
 ---
 
@@ -11,7 +11,7 @@ An intelligent, multi-stage AI platform that automates candidate screening. The 
 | 🔒 **Authentication** | Secure user login and management via **Clerk**. |
 | 🗄️ **Database** | Fully typed schema with **Prisma** and **Neon Database (Postgres)**. |
 | 📄 **Resume PDF Uploads** | Upload real PDF resumes from the UI. The Backend forwards the files to the Python API where they are processed via OCR (`pdfplumber`). |
-| 📝 **Intelligent Resume Parsing** | Identifies candidate name, skills, years of experience, and education from raw resume text using OpenAI LLMs. |
+| 📝 **Intelligent Resume Parsing** | Identifies candidate name, skills, years of experience, and education from raw resume text using Gemini LLMs. |
 | 🎯 **Candidate Matching (FAISS Vector Store)** | Scores each candidate (0–100) based on how well they fit the job requirements, leveraging an integrated scoring system and semantic search. |
 | ⚖️ **Bias Detection** | AI reviews match reasoning for potential bias (gender, race, age, education-tier bias, etc.). |
 | ✉️ **Email Generation** | Auto-drafts a professional outreach or rejection email based on the match outcome. |
@@ -34,7 +34,7 @@ The platform is split into three main components that run concurrently:
 
 - **Node.js** (v18+)
 - **Python** (3.9+)
-- **Keys**: You will need an OpenAI API key, a Clerk account (Publishable/Secret keys), and a Postgres connection string (e.g., from Neon).
+- **Keys**: You will need a Google Studio Gemini API key, a Clerk account (Publishable/Secret keys), and a Postgres connection string (e.g., from Neon).
 
 ### 1. Installation
 
@@ -63,7 +63,7 @@ You need to set up three environment files.
 **1. Root Directory (`.env`)**
 Create a `.env` file in the root for the Python Agent:
 ```env
-OPENAI_API_KEY=sk-proj-...
+GEMINI_API_KEY=AIzaSy...
 ```
 
 **2. Backend Directory (`Backend/.env`)**
@@ -140,7 +140,7 @@ As of Next.js 16.3, `middleware.ts` is deprecated in favor of `proxy.ts`. Ensure
 | **Clerk** | Authentication & User Management |
 | **FastAPI** | High-performance Python API Server |
 | **LangGraph / LangChain** | Stateful, graph-based agent orchestration |
-| **OpenAI / FAISS** | LLM inference and Vector Store semantic search |
+| **Google Gemini / FAISS** | LLM inference and Vector Store semantic search |
 | **pdfplumber / python-multipart** | Raw file upload handling and OCR text extraction |
 | **Pydantic** | Data validation and structured output schemas |
 

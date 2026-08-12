@@ -160,13 +160,16 @@ async def parse_resume_endpoint(request: ParseResumeRequest):
 async def upload_and_parse_resume_endpoint(file: UploadFile = File(...)):
     try:
         # Extract text from the uploaded PDF
+
         content = await file.read()
         reader = PdfReader(BytesIO(content))
         resume_text = ""
         for page in reader.pages:
             resume_text += page.extract_text() + "\n"
-            
+        print(resume_text)
+        print("BEFORE parse_resume_node")
         res = parse_resume_node({"resume_text": resume_text, "candidate_metadata": {"fileName": file.filename}})
+        print("AFTER parse_resume_node")
         return res.get("parsed_resume", {})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
