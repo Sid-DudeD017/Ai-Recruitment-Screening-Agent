@@ -70,19 +70,28 @@ def parse_resume_node(state: GraphState) -> dict:
         print("PARSER 6: invoking LLM")
 
         # --------------------------------------------------
-        # LLM INVOCATION
+        # LLM INVOCATION WITH RETRY
         # --------------------------------------------------
-        result = chain.invoke(
-            {
-                "resume": state.get("resume_text", ""),
-                "metadata": metadata_str,
-            }
-        )
+        import time
+        max_retries = 3
+        result = None
+        for attempt in range(max_retries):
+            try:
+                result = chain.invoke(
+                    {
+                        "resume": state.get("resume_text", ""),
+                        "metadata": metadata_str,
+                    }
+                )
+                break
+            except Exception as e:
+                if "429" in str(e) and attempt < max_retries - 1:
+                    print(f"RATE LIMIT HIT (429). Retrying in 15 seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(15)
+                else:
+                    raise e
 
         print("PARSER 7: LLM invocation worked")
-
-        print("RESULT TYPE:", type(result))
-        print("RESULT:", repr(result))
 
         # --------------------------------------------------
         # MODEL DUMP

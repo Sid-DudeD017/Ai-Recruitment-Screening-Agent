@@ -48,7 +48,7 @@ export interface ApplicationListFilters {
   sortOrder: "asc" | "desc";
 }
 
-export function toApplicationDto(application: Application): ApplicationDto {
+export function toApplicationDto(application: any): ApplicationWithRelations | ApplicationDto {
   return {
     id: application.id,
     candidateId: application.candidateId,
@@ -59,5 +59,8 @@ export function toApplicationDto(application: Application): ApplicationDto {
     notes: application.notes,
     appliedAt: application.appliedAt,
     updatedAt: application.updatedAt,
+    ...(application.candidate && { candidate: application.candidate }),
+    ...(application.job && { job: application.job }),
+    ...(application.interviews && { interviews: application.interviews }),
   };
 }

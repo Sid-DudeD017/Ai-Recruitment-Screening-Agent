@@ -32,7 +32,7 @@ class AIClient {
 
     this.client = axios.create({
       baseURL,
-      timeout: 30000, // 30s — AI operations can be slow
+      timeout: 150000, // 150s — AI operations can be slow, especially structured output parsing
       headers: {
         "Content-Type": "application/json",
         ...(process.env.AI_SERVICE_API_KEY && {
@@ -50,17 +50,18 @@ class AIClient {
         );
         return response;
       },
-      (error: AxiosError) => {
+      (error: AxiosError<any>) => {
+        const detail = error.response?.data?.detail || error.message;
         logger.error(
           {
             url: error.config?.url,
             status: error.response?.status,
-            message: error.message,
+            message: detail,
           },
           "AI service request failed"
         );
         throw new AppError(
-          `AI service error: ${error.message}`,
+          `AI service error: ${detail}`,
           502,
           "AI_SERVICE_ERROR"
         );

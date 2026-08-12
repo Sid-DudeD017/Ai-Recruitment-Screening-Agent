@@ -37,14 +37,20 @@ export default function ApplicationsPage() {
   const [loadingApps, setLoadingApps] = useState(false)
   
   const [loadingMatch, setLoadingMatch] = useState<string | null>(null)
-  const [ranking, setRanking] = useState(false)
+  
+  const [isBatchScoring, setIsBatchScoring] = useState(false)
+  const [batchProgress, setBatchProgress] = useState<{ total: number, current: number } | null>(null)
+  
   const [reviewingApp, setReviewingApp] = useState<Application | null>(null)
   const [editedEmail, setEditedEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  // Ingestion Table State
+  const [ingestionPage, setIngestionPage] = useState(1)
+  const ingestionPageSize = 10
+
   const { getToken } = useAuth()
 
-  // 1. Fetch Jobs on mount for the selector
   useEffect(() => {
     async function fetchJobs() {
       try {
@@ -69,7 +75,6 @@ export default function ApplicationsPage() {
     fetchJobs()
   }, [getToken])
 
-  // 2. Fetch Applications when activeJobId changes
   useEffect(() => {
     async function fetchApplications() {
       if (!activeJobId) return
@@ -80,18 +85,14 @@ export default function ApplicationsPage() {
         if (!token) return
 
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-        // Pass jobId as query param. If API doesn't support it, we filter on client anyway.
         const res = await fetch(`${baseUrl}/applications?jobId=${activeJobId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         
-        if (!res.ok) {
-          throw new Error('Failed to fetch applications')
-        }
+        if (!res.ok) throw new Error('Failed to fetch applications')
         
         const json = await res.json()
         const apps = Array.isArray(json.data) ? json.data : []
-        // Filter by job ID on client just in case the API ignores the query param
         setApplications(apps.filter((a: Application) => a.jobId === activeJobId))
       } catch (err) {
         console.error(err)
@@ -103,120 +104,94 @@ export default function ApplicationsPage() {
     fetchApplications()
   }, [activeJobId, getToken])
 
-  // AI Feature: Match individual candidate (POST /api/ai/match)
-  const handleAIMatch = async (app: Application) => {
-    setLoadingMatch(app.id)
-    setError(null)
-    try {
-      const token = await getToken()
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-      
-      // Wait, standard AI match endpoint takes candidateSkills etc... but the instruction says:
-      // POST /api/ai/match with candidateId + jobId
-      const res = await fetch(`${baseUrl}/ai/match`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ candidateId: app.candidateId, jobId: app.jobId })
-      })
-      
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null)
-        throw new Error(errData?.error?.message || 'Match failed')
-      }
-      
-      const json = await res.json()
-      
-      // We expect the backend to return { matchScore, recommendation, ... }
-
-      setApplications((prev) =>
-        prev.map((a) =>
-          a.id === app.id
-            ? {
-                ...a,
-                status: 'PENDING_REVIEW', // HITL Pause!
-                matchScore: json.data?.matchScore ?? a.matchScore ?? undefined,
-                aiAnalysis: json.data?.recommendation || json.data?.analysis || a.aiAnalysis,
-                matchAnalysis: typeof json.data?.analysis === 'string' ? json.data.analysis : a.matchAnalysis,
-                draftEmail: json.data?.draftEmail || `Subject: Interview Invitation - ${a.job?.title || a.jobTitle || 'the role'}\n\nHi ${a.candidate?.firstName || (a.candidateName ? a.candidateName.split(' ')[0] : '')},\n\nWe reviewed your application and were very impressed with your background. We would love to schedule an interview.\n\nBest,\nRecruiting Team`
-
-              }
-            : a
-        )
-      )
-    } catch (err) {
-      console.error(err)
-      alert(err instanceof Error ? err.message : 'Failed AI Match')
-    } finally {
-      setLoadingMatch(null)
-    }
-  }
-
-  // AI Feature: Rank all candidates (POST /api/ai/rank)
-  const handleRankAll = async () => {
+  const handleAIAutoProcessAll = async () => {
     if (!activeJobId) return
-    setRanking(true)
+    
+    // Process anything that hasn't made it to the human board yet
+    const appsToProcess = applications.filter(a => a.status === 'APPLIED' || a.status === 'SCREENING')
+    if (appsToProcess.length === 0) return
+    
+    setIsBatchScoring(true)
+    setBatchProgress({ total: appsToProcess.length, current: 0 })
     setError(null)
     
-    try {
-      const token = await getToken()
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-      
-      const res = await fetch(`${baseUrl}/ai/rank`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ jobId: activeJobId })
-      })
-      
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null)
-        throw new Error(errData?.error?.message || 'Ranking failed')
-      }
-      
-      const json = await res.json()
-      const rankings = json.data?.rankings || []
-      
-      // Build a map of candidateId -> ranking data
-      const rankMap = new Map()
-      rankings.forEach((r: any, index: number) => {
-        rankMap.set(r.candidateId, { ...r, rankIndex: index + 1 })
-      })
-      
-      setApplications((prev) =>
-        prev.map((app) => {
-          if (app.jobId !== activeJobId) return app
-          const r = rankMap.get(app.candidateId)
-          if (r) {
-            return {
-              ...app,
-              matchScore: r.score,
-              aiAnalysis: `Rank #${r.rankIndex}: ${r.reasoning}`,
+    const token = await getToken()
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    
+    let currentProcessed = 0
+    
+    // Process sequentially to avoid Gemini API free tier rate limits (15 RPM)
+    for (const app of appsToProcess) {
+        try {
+            // Fetch a fresh token for EACH item because the loop can take several minutes and Clerk tokens expire quickly (60s)
+            const freshToken = await getToken()
+            
+            const res = await fetch(`${baseUrl}/ai/match`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${freshToken}`
+                },
+                body: JSON.stringify({ applicationId: app.id })
+            })
+            
+            if (res.ok) {
+                const json = await res.json()
+                const score = json.data?.matchScore || 0
+                
+                // Auto-Threshold Logic
+                const targetStatus = score > 75 ? 'PENDING_REVIEW' : 'SCREENING'
+                
+                if (targetStatus !== app.status) {
+                    await fetch(`${baseUrl}/applications/${app.id}/status`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ status: targetStatus })
+                    })
+                }
+                
+                setApplications((prev) =>
+                    prev.map((a) =>
+                        a.id === app.id
+                        ? {
+                            ...a,
+                            status: targetStatus,
+                            matchScore: score,
+                            aiAnalysis: json.data?.recommendation || json.data?.analysis || a.aiAnalysis,
+                            matchAnalysis: typeof json.data?.analysis === 'string' ? json.data.analysis : a.matchAnalysis,
+                        }
+                        : a
+                    )
+                )
+            } else {
+                const errData = await res.json().catch(() => null)
+                const errMsg = errData?.error?.message || errData?.message || `HTTP ${res.status}`
+                console.error(`Backend returned error for app ${app.id}: ${errMsg}`)
+                setError(prev => prev ? `${prev} | App ${app.id}: ${errMsg}` : `Error on App ${app.id}: ${errMsg}`)
             }
-          }
-          return app
-        }).sort((a, b) => {
-           // Re-sort within the list by match score descending
-           const scoreA = a.matchScore || 0;
-           const scoreB = b.matchScore || 0;
-           return scoreB - scoreA;
-        })
-      )
-    } catch (err) {
-      console.error(err)
-      alert(err instanceof Error ? err.message : 'Failed to rank candidates')
-    } finally {
-      setRanking(false)
+        } catch (err) {
+            console.error("Failed item", err)
+            setError(prev => prev ? `${prev} | App ${app.id}: Network Error` : `Network error on App ${app.id}`)
+        }
+        
+        currentProcessed++
+        setBatchProgress(prev => prev ? { ...prev, current: currentProcessed } : null)
+        
+        // Wait 4 seconds between requests
+        if (currentProcessed < appsToProcess.length) {
+            await new Promise(resolve => setTimeout(resolve, 4000))
+        }
     }
+    
+    setIsBatchScoring(false)
+    setBatchProgress(null)
   }
 
   const handleApproveAndSend = () => {
     if (!reviewingApp) return
-    // Simulate sending email and advancing stage
     setApplications(prev => prev.map(app => 
       app.id === reviewingApp.id ? { ...app, status: 'INTERVIEW' } : app
     ))
@@ -232,7 +207,6 @@ export default function ApplicationsPage() {
     setReviewingApp(null)
   }
 
-  // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, appId: string) => {
     e.dataTransfer.setData('appId', appId)
   }
@@ -251,7 +225,6 @@ export default function ApplicationsPage() {
 
     const previousStatus = appToMove.status
     
-    // Optimistic update
     setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: targetStatus } : a))
     
     try {
@@ -268,26 +241,28 @@ export default function ApplicationsPage() {
       })
       
       if (!res.ok) {
-        const errData = await res.json().catch(() => null)
-        throw new Error(errData?.error?.message || 'Invalid state transition')
+        throw new Error('Invalid state transition')
       }
     } catch (err) {
       console.error('Failed to move application:', err)
-      // Rollback optimistic update
       setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: previousStatus } : a))
       alert(err instanceof Error ? err.message : 'Failed to change status')
     }
   }
 
-  const columns: Application['status'][] = ['APPLIED', 'SCREENING', 'PENDING_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED']
-
+  // Visual Architecture Overhaul
+  const kanbanColumns: Application['status'][] = ['PENDING_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED']
+  
+  const ingestionApps = applications.filter(a => a.status === 'APPLIED' || a.status === 'SCREENING')
+  const totalPages = Math.ceil(ingestionApps.length / ingestionPageSize)
+  const paginatedIngestionApps = ingestionApps.slice((ingestionPage - 1) * ingestionPageSize, ingestionPage * ingestionPageSize)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Application Pipeline</h1>
-          <p className="text-gray-500">Track candidates and run AI evaluation matching.</p>
+          <p className="text-gray-500">Autonomous processing and Human-in-the-loop review.</p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -303,11 +278,11 @@ export default function ApplicationsPage() {
           </select>
           
           <button
-            onClick={handleRankAll}
-            disabled={ranking || !activeJobId}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+            onClick={handleAIAutoProcessAll}
+            disabled={isBatchScoring || !activeJobId}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 disabled:opacity-50 whitespace-nowrap shadow-sm"
           >
-            {ranking ? 'Ranking...' : '✨ AI Rank All'}
+            {isBatchScoring ? 'Processing...' : '✨ Process All Candidates'}
           </button>
         </div>
       </div>
@@ -317,75 +292,171 @@ export default function ApplicationsPage() {
           <p>{error}</p>
         </div>
       )}
+      
+      {batchProgress && (
+        <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-xl space-y-3 shadow-inner">
+          <div className="flex justify-between items-center text-indigo-900 font-semibold">
+            <span>Agentic Batch Processing...</span>
+            <span>{batchProgress.current} / {batchProgress.total}</span>
+          </div>
+          <div className="w-full bg-indigo-200 rounded-full h-3">
+            <div 
+              className="bg-indigo-600 h-3 rounded-full transition-all duration-300" 
+              style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-indigo-700 font-medium text-center">Filtering candidates. Scores &gt; 75% will automatically move to Pending Review.</p>
+        </div>
+      )}
 
       {loadingApps ? (
         <div className="p-12 text-center text-gray-500 animate-pulse">Loading applications...</div>
       ) : (
-        <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
-          {columns.map((col) => {
-            const colApps = applications.filter((a) => a.status === col)
-
-            return (
-              <div 
-                key={col} 
-                className="bg-gray-100 rounded-xl p-4 space-y-3 min-w-[280px] w-[280px] flex-shrink-0 snap-start min-h-[500px]"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, col)}
-              >
-                <div className="flex justify-between items-center text-xs font-bold text-gray-600 uppercase">
-                  <span>{col}</span>
-                  <span className="bg-gray-200 px-2 py-0.5 rounded-full">{colApps.length}</span>
-                </div>
-
-                <div className="space-y-3">
-                  {colApps.map((app) => (
-                    <div
-                      key={app.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, app.id)}
-                      className="bg-white p-4 rounded-lg border shadow-sm space-y-3 hover:shadow-md transition cursor-grab active:cursor-grabbing"
-                    >
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-sm">
+        <>
+          {/* AI-Controlled Zone (Ingestion Data Table) */}
+          <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-gray-50 border-b p-4 flex justify-between items-center">
+              <div>
+                <h2 className="font-bold text-gray-800 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  AI-Controlled Zone (Ingestion Volume)
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">Raw candidates awaiting autonomous scoring. Threshold: &gt; 75% match.</p>
+              </div>
+              <span className="bg-gray-200 text-gray-800 text-xs font-bold px-3 py-1 rounded-full">
+                {ingestionApps.length} Candidates
+              </span>
+            </div>
+            
+            {ingestionApps.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-sm">No raw candidates in the ingestion pipeline.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold">Candidate</th>
+                      <th className="px-6 py-3 font-semibold">Status</th>
+                      <th className="px-6 py-3 font-semibold">AI Match Score</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y text-gray-700">
+                    {paginatedIngestionApps.map(app => (
+                      <tr key={app.id} className="hover:bg-gray-50 transition">
+                        <td className="px-6 py-4 font-medium text-gray-900">
                           {app.candidate?.firstName} {app.candidate?.lastName}
-                        </h3>
-                        <p className="text-xs text-gray-500">{app.job?.title || 'Unknown Job'}</p>
-                      </div>
+                          <div className="text-xs text-gray-500 font-normal">{app.job?.title || 'Unknown Job'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wide ${app.status === 'SCREENING' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                            {app.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {app.matchScore != null ? (
+                            <span className={`font-bold ${app.matchScore > 75 ? 'text-green-600' : 'text-gray-500'}`}>{Math.round(app.matchScore)}%</span>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs">Unscored</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="bg-gray-50 border-t p-3 flex justify-between items-center text-sm text-gray-600">
+                <button 
+                  onClick={() => setIngestionPage(prev => Math.max(1, prev - 1))}
+                  disabled={ingestionPage === 1}
+                  className="px-3 py-1 bg-white border rounded hover:bg-gray-100 disabled:opacity-50 transition"
+                >
+                  Previous
+                </button>
+                <span>Page {ingestionPage} of {totalPages}</span>
+                <button 
+                  onClick={() => setIngestionPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={ingestionPage === totalPages}
+                  className="px-3 py-1 bg-white border rounded hover:bg-gray-100 disabled:opacity-50 transition"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
 
-                      {/* Match Score Badge */}
-                      {app.matchScore != null ? (
-                        <div className="p-2 bg-green-50 border border-green-200 rounded-md space-y-1">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-green-800">AI Match Score</span>
-                            <span className="text-xs font-extrabold text-green-700">{Math.round(app.matchScore)}%</span>
+          {/* Human-Controlled Zone (Kanban Board) */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+              <h2 className="font-bold text-gray-800 text-lg">Human-Controlled Zone (Vetted)</h2>
+            </div>
+            
+            <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
+              {kanbanColumns.map((col) => {
+                const colApps = applications.filter((a) => a.status === col)
+
+                return (
+                  <div 
+                    key={col} 
+                    className="bg-gray-100 rounded-xl p-4 space-y-3 min-w-[300px] w-[300px] flex-shrink-0 snap-start min-h-[500px]"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, col)}
+                  >
+                    <div className="flex justify-between items-center text-xs font-bold text-gray-600 uppercase">
+                      <span>{col}</span>
+                      <span className="bg-gray-200 px-2 py-0.5 rounded-full text-[10px]">{colApps.length}</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {colApps.map((app) => (
+                        <div
+                          key={app.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, app.id)}
+                          className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-3 hover:border-purple-300 hover:shadow-md transition cursor-grab active:cursor-grabbing group"
+                        >
+                          <div>
+                            <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition">
+                              {app.candidate?.firstName} {app.candidate?.lastName}
+                            </h3>
+                            <p className="text-xs text-gray-500">{app.job?.title || 'Unknown Job'}</p>
                           </div>
-                          {app.aiAnalysis && (
-                            <p className="text-[11px] text-green-900 leading-tight">
-                              {typeof app.aiAnalysis === 'string' ? app.aiAnalysis : JSON.stringify(app.aiAnalysis)}
-                            </p>
+
+                          {/* Match Score Badge */}
+                          {app.matchScore != null && (
+                            <div className="p-2.5 bg-green-50 border border-green-200 rounded-md space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-green-800 uppercase tracking-wide">AI Match</span>
+                                <span className="text-xs font-extrabold text-green-700 bg-white px-2 py-0.5 rounded shadow-sm border border-green-100">
+                                  {Math.round(app.matchScore)}%
+                                </span>
+                              </div>
+                              {app.aiAnalysis && (
+                                <p className="text-[11px] text-green-900 leading-snug line-clamp-3">
+                                  {typeof app.aiAnalysis === 'string' ? app.aiAnalysis : JSON.stringify(app.aiAnalysis)}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => handleAIMatch(app)}
-                          disabled={loadingMatch === app.id}
-                          className="w-full text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 rounded font-medium transition disabled:opacity-50"
-                        >
-                          {loadingMatch === app.id ? 'Evaluating...' : '✨ Run AI Match'}
-                        </button>
+                      ))}
+                      {colApps.length === 0 && (
+                        <div className="p-6 text-center text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center gap-2">
+                          <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                          Drop cards here
+                        </div>
                       )}
                     </div>
-                  ))}
-                  {colApps.length === 0 && (
-                    <div className="p-4 text-center text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
-                      Drop cards here
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
       )}
 
       {/* HITL Review Modal */}
@@ -409,19 +480,19 @@ export default function ApplicationsPage() {
             <div className="flex gap-3 justify-end pt-2">
               <button 
                 onClick={() => setReviewingApp(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleReject}
-                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
+                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition"
               >
                 Reject Candidate
               </button>
               <button 
                 onClick={handleApproveAndSend}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition shadow-sm"
               >
                 Approve & Send Email
               </button>

@@ -58,7 +58,7 @@ Ranks multiple candidate evaluations.
    pip install -r requirements.txt
    ```
 2. Create a `.env` file with your Google Gemini key:
-   ```
+   ```bash
    GEMINI_API_KEY=AIzaSy...
    GEMINI_MODEL=gemini-1.5-flash
    APP_PORT=8000
