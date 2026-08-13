@@ -53,7 +53,7 @@ export const POST = routeHandler(
       logger.info({ fileName: file.name }, "Sending PDF to AI agent for parsing");
       aiParsedData = await aiClient.uploadAndParseResume(file);
     } catch (error) {
-      logger.error("Failed to parse resume with AI Agent. Proceeding with blank candidate.", error);
+      logger.error({ err: error }, "Failed to parse resume with AI Agent. Proceeding with blank candidate.");
       // We gracefully degrade instead of failing the entire upload.
       aiParsedData = {
         name: file.name.replace(/\.[^/.]+$/, ""), // Use filename as fallback name

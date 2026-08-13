@@ -17,14 +17,13 @@ export default function Navbar() {
   ]
 
   return (
-    <header className="flex justify-between items-center p-4 border-b bg-white shadow-sm">
+    <header style={{ backgroundColor: '#151c2c', borderBottom: '1px solid #2a364f', color: '#ffffff' }} className="flex justify-between items-center px-6 py-4 shadow-md">
       <div className="flex items-center gap-8">
-        <Link href="/" className="font-bold text-xl text-gray-800">
-          AI Recruitment
+        <Link href="/" style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.2rem', textDecoration: 'none' }} className="flex items-center gap-2">
+          <span>🤖</span> AI Recruitment
         </Link>
         <nav className="hidden md:flex gap-2 text-sm font-medium">
           {navItems.map((item) => {
-            // Check if link is active (exact match for home, startsWith for subroutes like /jobs/create)
             const isActive =
               item.href === '/'
                 ? pathname === '/'
@@ -34,10 +33,12 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-600 font-semibold'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                style={isActive
+                  ? { backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700 }
+                  : { color: '#cbd5e1' }
+                }
+                className={`px-3.5 py-1.5 rounded-xl transition-all duration-150 ${
+                  !isActive ? 'hover:bg-slate-800' : ''
                 }`}
               >
                 {item.name}
@@ -49,10 +50,10 @@ export default function Navbar() {
 
       <div>
         {!isLoaded ? (
-          <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+          <div className="h-8 w-8 rounded-full bg-slate-700 animate-pulse" />
         ) : !isSignedIn ? (
           <SignInButton mode="modal">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md text-sm transition">
+            <button style={{ backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700 }} className="px-4 py-2 rounded-xl text-sm transition shadow-sm hover:opacity-90">
               Sign In
             </button>
           </SignInButton>

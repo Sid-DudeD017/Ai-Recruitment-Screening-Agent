@@ -93,7 +93,7 @@ export const POST = routeHandler(
       // For simplicity, we just attach it to the resume right now.
       
     } catch (error) {
-      logger.error("Failed to parse resume with AI Agent", error);
+      logger.error({ err: error }, "Failed to parse resume with AI Agent");
       // We don't fail the whole request if AI parsing fails, as the file was uploaded successfully.
     }
 
