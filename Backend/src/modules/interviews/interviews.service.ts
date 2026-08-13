@@ -101,6 +101,51 @@ export const interviewsService = {
     return interview;
   },
 
+  /**
+   * Schedule interviews in batch for a role/group of applications
+   */
+  async createBatch(
+    input: {
+      applicationIds: string[];
+      baseScheduledAt: Date;
+      staggerMinutes: number;
+      durationMinutes: number;
+      type: "PHONE" | "VIDEO" | "ONSITE" | "TECHNICAL";
+      interviewerIds: string[];
+      location?: string;
+      meetingLink?: string;
+      notes?: string;
+    },
+    companyId: string,
+    clerkId: string
+  ) {
+    const createdInterviews = [];
+    const baseMs = new Date(input.baseScheduledAt).getTime();
+
+    for (let i = 0; i < input.applicationIds.length; i++) {
+      const appId = input.applicationIds[i];
+      const scheduledTime = new Date(baseMs + i * input.staggerMinutes * 60 * 1000);
+
+      const created = await this.create(
+        {
+          applicationId: appId,
+          scheduledAt: scheduledTime,
+          durationMinutes: input.durationMinutes,
+          type: input.type,
+          interviewerIds: input.interviewerIds,
+          location: input.location,
+          meetingLink: input.meetingLink,
+          notes: input.notes,
+        },
+        companyId,
+        clerkId
+      );
+      createdInterviews.push(created);
+    }
+
+    return createdInterviews;
+  },
+
   async getById(id: string, companyId: string) {
     const interview = await interviewsRepository.findById(id, companyId);
     if (!interview) {

@@ -44,6 +44,20 @@ export const interviewFilterSchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 
+export const createBatchInterviewSchema = z.object({
+  applicationIds: z.array(z.string().min(1)).min(1, "At least one application ID is required"),
+  baseScheduledAt: z.coerce.date(),
+  staggerMinutes: z.number().int().min(0).default(0),
+  durationMinutes: z.number().int().min(15).max(480).default(60),
+  type: z.enum(["PHONE", "VIDEO", "ONSITE", "TECHNICAL"]).default("VIDEO"),
+  interviewerIds: z.array(z.string()).min(1, "At least one interviewer is required"),
+  location: z.string().optional(),
+  meetingLink: z.string().url("Invalid meeting link").optional().or(z.literal("")),
+  notes: z.string().optional(),
+});
+
 export type CreateInterviewInput = z.infer<typeof createInterviewSchema>;
+export type CreateBatchInterviewInput = z.infer<typeof createBatchInterviewSchema>;
 export type UpdateInterviewInput = z.infer<typeof updateInterviewSchema>;
 export type InterviewFilterInput = z.infer<typeof interviewFilterSchema>;
+
