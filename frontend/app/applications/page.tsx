@@ -93,7 +93,7 @@ export default function ApplicationsPage() {
 
   const handleAIAutoProcessAll = async () => {
     if (!activeJobId) return
-    const appsToProcess = applications.filter(a => a.status === 'APPLIED' || a.status === 'SCREENING')
+    const appsToProcess = applications.filter(a => (a.status === 'APPLIED' || a.status === 'SCREENING') && a.matchScore == null)
     if (appsToProcess.length === 0) return
     setIsBatchScoring(true)
     setBatchProgress({ total: appsToProcess.length, current: 0 })
@@ -178,6 +178,7 @@ export default function ApplicationsPage() {
 
   const kanbanColumns: Application['status'][] = ['PENDING_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED']
   const ingestionApps = applications.filter(a => a.status === 'APPLIED' || a.status === 'SCREENING')
+  const remainingToProcessCount = ingestionApps.filter(a => a.matchScore == null).length
   const totalPages = Math.ceil(ingestionApps.length / ingestionPageSize)
   const paginatedIngestionApps = ingestionApps.slice((ingestionPage - 1) * ingestionPageSize, ingestionPage * ingestionPageSize)
 
@@ -207,10 +208,10 @@ export default function ApplicationsPage() {
           </select>
           <button
             onClick={handleAIAutoProcessAll}
-            disabled={isBatchScoring || !activeJobId}
-            style={{ backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', opacity: (isBatchScoring || !activeJobId) ? 0.5 : 1, whiteSpace: 'nowrap' }}
+            disabled={isBatchScoring || !activeJobId || remainingToProcessCount === 0}
+            style={{ backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', opacity: (isBatchScoring || !activeJobId || remainingToProcessCount === 0) ? 0.5 : 1, whiteSpace: 'nowrap' }}
           >
-            {isBatchScoring ? 'Processing...' : '✨ Process All Candidates'}
+            {isBatchScoring ? 'Processing...' : `✨ Process Remaining (${remainingToProcessCount})`}
           </button>
         </div>
       </div>
@@ -249,7 +250,7 @@ export default function ApplicationsPage() {
                 <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>Raw candidates awaiting autonomous scoring. Threshold: &gt; 75% match.</p>
               </div>
               <span style={{ backgroundColor: '#334155', color: '#e2e8f0', fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: '9999px' }}>
-                {ingestionApps.length} Candidates
+                {ingestionApps.length} Total • {remainingToProcessCount} Unscored
               </span>
             </div>
 
