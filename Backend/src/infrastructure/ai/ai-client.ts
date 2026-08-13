@@ -32,7 +32,7 @@ class AIClient {
 
     this.client = axios.create({
       baseURL,
-      timeout: 150000, // 150s — AI operations can be slow, especially structured output parsing
+      timeout: 300000, // 300s — AI operations can be slow (e.g. rate limit retries)
       headers: {
         "Content-Type": "application/json",
         ...(process.env.AI_SERVICE_API_KEY && {

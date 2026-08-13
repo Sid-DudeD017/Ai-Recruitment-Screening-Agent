@@ -10,6 +10,10 @@ export interface ParseResumeRequest {
 }
 
 export interface ParseResumeResponse {
+  name?: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
   parsedContent: string;
   skills: string[];
   experience: Array<{
