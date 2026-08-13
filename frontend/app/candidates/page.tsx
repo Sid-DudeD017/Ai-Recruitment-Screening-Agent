@@ -9,6 +9,16 @@ interface Job {
   title: string
 }
 
+interface ParsingJob {
+  id: string
+  fileName: string
+  status: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED'
+  progress: number | null
+  error: string | null
+  createdAt: string
+  completedAt?: string
+}
+
 interface Candidate {
   id: string
   firstName: string
@@ -26,6 +36,7 @@ interface Candidate {
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
+  const [parsingJobs, setParsingJobs] = useState<ParsingJob[]>([])
   
   const { getToken } = useAuth()
   
@@ -72,6 +83,40 @@ export default function CandidatesPage() {
       }
     }
     fetchCandidates()
+  }, [getToken])
+
+  // Fetch parsing jobs
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    async function fetchParsingJobs() {
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+        const res = await fetch(`${baseUrl}/candidates/parsing-jobs`, { headers: { 'Authorization': `Bearer ${token}` } });
+        
+        if (res.ok) {
+          const json = await res.json();
+          const jobs = json.data || [];
+          setParsingJobs(jobs);
+
+          // Poll every 3 seconds if active jobs, else 15 seconds
+          const hasActive = jobs.some((j: ParsingJob) => j.status === 'PENDING' || j.status === 'PARSING');
+          timeoutId = setTimeout(fetchParsingJobs, hasActive ? 3000 : 15000);
+        } else {
+          timeoutId = setTimeout(fetchParsingJobs, 15000);
+        }
+      } catch (err) {
+        console.error('Failed to fetch parsing jobs:', err);
+        timeoutId = setTimeout(fetchParsingJobs, 15000);
+      }
+    }
+
+    fetchParsingJobs();
+
+    return () => clearTimeout(timeoutId);
   }, [getToken])
 
   // Bulk Upload Handlers
@@ -305,6 +350,46 @@ export default function CandidatesPage() {
           </div>
         )}
       </div>
+
+      {/* Resume Parsing History */}
+      {parsingJobs.length > 0 && (
+        <div className="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+            <h2 className="font-bold text-gray-800">Resume Parsing History</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="bg-gray-50 text-gray-500 uppercase font-semibold border-b">
+                <tr>
+                  <th className="px-6 py-4">File</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Progress</th>
+                  <th className="px-6 py-4">Error</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {parsingJobs.map(job => (
+                  <tr key={job.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 font-medium text-gray-900 truncate max-w-[200px]" title={job.fileName}>{job.fileName}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                        job.status === 'COMPLETED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                        job.status === 'FAILED' ? 'bg-red-100 text-red-800 border border-red-200' :
+                        job.status === 'PARSING' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                        'bg-gray-100 text-gray-800 border border-gray-200'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{job.progress !== null ? `${job.progress}%` : '—'}</td>
+                    <td className="px-6 py-4 text-red-600 truncate max-w-[300px]" title={job.error || ''}>{job.error || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Candidate List */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[400px]">
