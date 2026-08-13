@@ -34,14 +34,23 @@ export const POST = routeHandler(
       );
     }
 
-    // 0. Create ParsingJob
-    const parsingJob = await prisma.parsingJob.create({
-      data: {
-        fileName: file.name,
-        status: "PENDING",
-        companyId: auth.companyId,
-      }
-    });
+    const existingJobId = formData.get("jobId") as string | null;
+
+    // 0. Create or Get ParsingJob
+    let parsingJob;
+    if (existingJobId) {
+      parsingJob = await prisma.parsingJob.findUnique({ where: { id: existingJobId } });
+    }
+    
+    if (!parsingJob) {
+      parsingJob = await prisma.parsingJob.create({
+        data: {
+          fileName: file.name,
+          status: "PENDING",
+          companyId: auth.companyId,
+        }
+      });
+    }
 
     try {
       await prisma.parsingJob.update({

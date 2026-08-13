@@ -179,6 +179,26 @@ export default function CandidatesPage() {
     
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
     
+    // Create parsing jobs upfront so they appear in history immediately
+    let precreatedJobs: any[] = [];
+    try {
+      const initialToken = await getToken();
+      const createRes = await fetch(`${baseUrl}/candidates/parsing-jobs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${initialToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fileNames: filesToUpload.map(f => f.name) })
+      });
+      if (createRes.ok) {
+        const createJson = await createRes.json();
+        precreatedJobs = createJson.data || [];
+      }
+    } catch (err) {
+      console.error("Failed to precreate parsing jobs:", err);
+    }
+
     let successCount = 0;
     for (let i = 0; i < filesToUpload.length; i++) {
       const uploadFile = filesToUpload[i]
@@ -187,6 +207,9 @@ export default function CandidatesPage() {
       try {
         const formData = new FormData()
         formData.append('file', uploadFile)
+        if (precreatedJobs[i] && precreatedJobs[i].id) {
+          formData.append('jobId', precreatedJobs[i].id);
+        }
         
         // Fetch a fresh token for EACH file because the loop can take several minutes and Clerk tokens expire quickly (60s)
         const freshToken = await getToken()

@@ -22,3 +22,32 @@ export const GET = routeHandler(
     return successResponse(jobs);
   }
 );
+
+/**
+ * POST /api/candidates/parsing-jobs
+ * Creates multiple PENDING parsing jobs upfront
+ */
+export const POST = routeHandler(
+  { allowedRoles: ["ADMIN", "RECRUITER"] },
+  async (req, { auth }) => {
+    const { fileNames } = await req.json();
+    
+    if (!Array.isArray(fileNames) || fileNames.length === 0) {
+      return successResponse([]);
+    }
+
+    const createdJobs = [];
+    for (const fileName of fileNames) {
+      const job = await prisma.parsingJob.create({
+        data: {
+          fileName,
+          status: "PENDING",
+          companyId: auth.companyId,
+        }
+      });
+      createdJobs.push(job);
+    }
+
+    return successResponse(createdJobs, 201);
+  }
+);
