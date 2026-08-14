@@ -274,7 +274,9 @@ export default function ApplicationsPage() {
                           <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{app.job?.title || 'Unknown Job'}</div>
                         </td>
                         <td style={{ padding: '16px 24px' }}>
-                          <span style={statusBadgeStyle(app.status)}>{app.status}</span>
+                          <span style={statusBadgeStyle(app.matchScore != null && app.status === 'APPLIED' ? 'SCREENING' : app.status)}>
+                            {app.matchScore != null && app.status === 'APPLIED' ? 'SCREENING' : app.status}
+                          </span>
                         </td>
                         <td style={{ padding: '16px 24px' }}>
                           {app.matchScore != null ? (
