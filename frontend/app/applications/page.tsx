@@ -93,16 +93,13 @@ export default function ApplicationsPage() {
 
   const handleAIAutoProcessAll = async () => {
     if (!activeJobId) return
-    const appsToProcess = applications.filter(a => (a.status === 'APPLIED' || a.status === 'SCREENING'))
+    const appsToProcess = applications.filter(a => (a.status === 'APPLIED' || a.status === 'SCREENING') && a.matchScore == null)
     if (appsToProcess.length === 0) return
-    
     setIsBatchScoring(true)
     setBatchProgress({ total: appsToProcess.length, current: 0 })
     setError(null)
-    
     const token = await getToken()
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-    
     let currentProcessed = 0
     let rejectedCount = 0
     
@@ -143,10 +140,13 @@ export default function ApplicationsPage() {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify({ status: targetStatus })
-            });
+            })
           }
-          
-          setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: targetStatus, matchScore: score, aiAnalysis, matchAnalysis } : a));
+          setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: targetStatus, matchScore: score, aiAnalysis: json.data?.recommendation || json.data?.analysis || a.aiAnalysis, matchAnalysis: typeof json.data?.analysis === 'string' ? json.data.analysis : a.matchAnalysis } : a))
+        } else {
+          const errData = await res.json().catch(() => null)
+          const errMsg = errData?.error?.message || `HTTP ${res.status}`
+          setError(prev => prev ? `${prev} | App ${app.id}: ${errMsg}` : `Error on App ${app.id}: ${errMsg}`)
         }
       } catch (err) {
         setError(prev => prev ? `${prev} | App ${app.id}: Network Error` : `Network error on App ${app.id}`)
@@ -160,7 +160,6 @@ export default function ApplicationsPage() {
         await new Promise(resolve => setTimeout(resolve, 4000))
       }
     }
-    
     setIsBatchScoring(false)
     setBatchProgress(null)
     
@@ -284,7 +283,7 @@ export default function ApplicationsPage() {
                 <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>Raw candidates awaiting autonomous scoring. Threshold: &gt; 75% match.</p>
               </div>
               <span style={{ backgroundColor: '#334155', color: '#e2e8f0', fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: '9999px' }}>
-                {ingestionApps.length} Total
+                {ingestionApps.length} Total • {remainingToProcessCount} Unscored
               </span>
             </div>
 

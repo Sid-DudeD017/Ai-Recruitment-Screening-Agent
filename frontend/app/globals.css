@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0b0f17;
+  --foreground: #f8fafc;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Enforce dark canvas & bright high-visibility text */
+html, body {
+  background-color: #0b0f17 !important;
+  color: #f8fafc !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  min-height: 100vh;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Universal text contrast */
+h1, h2, h3, h4, h5, h6, p, span, label, td, th, div {
+  color: #f8fafc;
+}
+
+.text-gray-900, .text-gray-800, .text-gray-700 {
+  color: #ffffff !important;
+}
+
+.text-gray-600, .text-gray-500 {
+  color: #cbd5e1 !important;
+}
+
+.text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+/* Card & container dark theme overrides */
+.bg-white {
+  background-color: #151c2c !important;
+  color: #ffffff !important;
+  border-color: #2a364f !important;
+}
+
+.bg-gray-50 {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.bg-gray-100 {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+.border, .border-b, .border-t, .border-r, .border-l {
+  border-color: #2a364f !important;
+}
+
+/* Form inputs, selects & textareas contrast rules */
+input, select, textarea {
+  color: #ffffff !important;
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+select option {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+/* HIGH-CONTRAST BADGES, PILLS & BUTTON OVERRIDES */
+
+/* Role / Job Blue Badges */
+.bg-blue-50 {
+  background-color: #1e3a8a !important;
+  border-color: #3b82f6 !important;
+}
+.text-blue-700, .text-blue-600 {
+  color: #93c5fd !important;
+}
+.border-blue-100, .border-blue-200 {
+  border-color: #3b82f6 !important;
+}
+
+/* Status Amber/Yellow Badges */
+.bg-amber-50 {
+  background-color: #78350f !important;
+  border-color: #f59e0b !important;
+}
+.text-amber-700, .text-amber-600 {
+  color: #fef08a !important;
+}
+.border-amber-200 {
+  border-color: #f59e0b !important;
+}
+
+/* Action Button Indigo Badges */
+.bg-indigo-50 {
+  background-color: #312e81 !important;
+  border-color: #6366f1 !important;
+}
+.text-indigo-700, .text-indigo-600 {
+  color: #e0e7ff !important;
+}
+
+/* Purple AI Badges */
+.bg-purple-50 {
+  background-color: #581c87 !important;
+  border-color: #a855f7 !important;
+}
+.text-purple-700, .text-purple-600 {
+  color: #f3e8ff !important;
+}
+
+/* Green Emerald Badges */
+.bg-emerald-50 {
+  background-color: #064e3b !important;
+  border-color: #10b981 !important;
+}
+.text-emerald-700, .text-emerald-600, .text-emerald-800 {
+  color: #a7f3d0 !important;
+}
+
+/* Red Rose Badges */
+.bg-rose-50, .bg-red-50 {
+  background-color: #881337 !important;
+  border-color: #f43f5e !important;
+}
+.text-rose-700, .text-red-700, .text-red-600 {
+  color: #fecdd3 !important;
+}
+
+/* Table styles */
+table thead tr {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+table tbody tr:hover {
+  background-color: #1e293b !important;
 }

@@ -12,6 +12,10 @@ interface Job {
   type: string
 }
 
+const cardStyle: React.CSSProperties = { backgroundColor: '#151c2c', border: '1px solid #2a364f', borderRadius: '12px', overflow: 'hidden' }
+const theadStyle: React.CSSProperties = { backgroundColor: '#1e293b', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }
+const trStyle: React.CSSProperties = { borderBottom: '1px solid #2a364f' }
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,26 +28,11 @@ export default function JobsPage() {
       try {
         setLoading(true)
         const token = await getToken()
-        
-        if (!token) {
-          setError('Authentication required')
-          return
-        }
-
+        if (!token) { setError('Authentication required'); return }
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-        const res = await fetch(`${baseUrl}/jobs`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
-        if (!res.ok) {
-          throw new Error('Failed to fetch jobs')
-        }
-
+        const res = await fetch(`${baseUrl}/jobs`, { headers: { 'Authorization': `Bearer ${token}` } })
+        if (!res.ok) throw new Error('Failed to fetch jobs')
         const json = await res.json()
-        // Assuming API returns { success: true, data: Job[], meta: ... }
-        // or { data: Job[] } based on previous assumption
         setJobs(json.data || [])
       } catch (err) {
         console.error(err)
@@ -52,40 +41,45 @@ export default function JobsPage() {
         setLoading(false)
       }
     }
-
     fetchJobs()
   }, [getToken])
+
+  const getStatusStyle = (status: string): React.CSSProperties => {
+    if (status === 'OPEN') return { backgroundColor: '#052e16', color: '#86efac', border: '1px solid #16a34a', borderRadius: '9999px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }
+    return { backgroundColor: '#1e293b', color: '#94a3b8', border: '1px solid #475569', borderRadius: '9999px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }
+  }
+
+  const getTypeStyle = (): React.CSSProperties => ({
+    color: '#fb923c', fontWeight: 600, fontSize: '13px'
+  })
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Jobs Management</h1>
-          <p className="text-gray-500">View and manage open positions.</p>
+          <h1 style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.875rem' }}>Jobs Management</h1>
+          <p style={{ color: '#94a3b8', marginTop: '4px' }}>View and manage open positions.</p>
         </div>
         <Link
           href="/jobs/create"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          style={{ backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', textDecoration: 'none' }}
         >
           + Create New Job
         </Link>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
-          <h2 className="font-bold">Error</h2>
+        <div style={{ backgroundColor: '#450a0a', color: '#fca5a5', border: '1px solid #dc2626', borderRadius: '8px', padding: '12px 16px' }}>
           <p>{error}</p>
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-6 animate-pulse">
-          <div className="h-64 bg-gray-200 rounded-xl" />
-        </div>
+        <div style={{ height: '200px', backgroundColor: '#1e293b', borderRadius: '12px', animation: 'pulse 2s infinite' }} />
       ) : (
-        <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="bg-gray-50 border-b text-xs uppercase text-gray-500">
+        <div style={cardStyle}>
+          <table className="w-full text-left text-sm">
+            <thead style={theadStyle}>
               <tr>
                 <th className="p-4">Job Title</th>
                 <th className="p-4">Location</th>
@@ -93,24 +87,20 @@ export default function JobsPage() {
                 <th className="p-4">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50 transition">
-                  <td className="p-4 font-semibold text-gray-900">{job.title}</td>
-                  <td className="p-4">{job.location || '-'}</td>
-                  <td className="p-4">{job.type}</td>
+                <tr key={job.id} style={trStyle} className="transition hover:brightness-110">
+                  <td className="p-4" style={{ color: '#ffffff', fontWeight: 600 }}>{job.title}</td>
+                  <td className="p-4" style={{ color: '#cbd5e1' }}>{job.location || '-'}</td>
+                  <td className="p-4" style={getTypeStyle()}>{job.type}</td>
                   <td className="p-4">
-                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
-                      job.status === 'OPEN' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {job.status}
-                    </span>
+                    <span style={getStatusStyle(job.status)}>{job.status}</span>
                   </td>
                 </tr>
               ))}
               {jobs.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                  <td colSpan={4} style={{ color: '#64748b', textAlign: 'center', padding: '32px' }}>
                     No jobs found.
                   </td>
                 </tr>

@@ -76,6 +76,13 @@ enum EmailDraftStatus {
   REJECTED
 }
 
+enum ParsingJobStatus {
+  PENDING
+  PARSING
+  COMPLETED
+  FAILED
+}
+
 // =============================================================================
 // Models
 // =============================================================================
@@ -94,6 +101,7 @@ model Company {
   users      User[]
   jobs       Job[]
   candidates Candidate[]
+  parsingJobs ParsingJob[]
 
   @@map("companies")
 }
@@ -305,4 +313,24 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+/// Tracks the progress and outcome of an AI resume parsing job
+model ParsingJob {
+  id          String           @id @default(cuid())
+  fileName    String
+  status      ParsingJobStatus @default(PENDING)
+  progress    Int?
+  error       String?          @db.Text
+  companyId   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Relations
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@map("parsing_jobs")
 }
