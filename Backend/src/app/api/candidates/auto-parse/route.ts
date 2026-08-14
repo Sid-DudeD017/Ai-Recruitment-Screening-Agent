@@ -7,6 +7,7 @@ import { aiClient } from "@/infrastructure/ai/ai-client";
 import { AppError } from "@/shared/errors";
 import { APP_CONSTANTS } from "@/config";
 import { createModuleLogger } from "@/shared/utils/logger";
+import { applicationsService } from "@/modules/applications/applications.service";
 
 const logger = createModuleLogger("auto-parse");
 
@@ -20,6 +21,8 @@ export const POST = routeHandler(
     // Parse the multipart form data
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const targetJobId = formData.get("targetJobId") as string | null;
+    const existingJobId = formData.get("jobId") as string | null;
 
     if (!file) {
       throw new AppError("No file provided", 400, "FILE_REQUIRED");
@@ -33,8 +36,6 @@ export const POST = routeHandler(
         "INVALID_FILE_TYPE"
       );
     }
-
-    const existingJobId = formData.get("jobId") as string | null;
 
     // 0. Create or Get ParsingJob
     let parsingJob;
@@ -125,8 +126,8 @@ export const POST = routeHandler(
       let safeSkills: string[] = [];
       if (Array.isArray(aiParsedData.skills)) {
         safeSkills = aiParsedData.skills.map((s: any) => String(s));
-      } else if (typeof aiParsedData.skills === "string") {
-        safeSkills = aiParsedData.skills.split(",").map((s: string) => s.trim());
+      } else if (typeof (aiParsedData.skills as any) === "string") {
+        safeSkills = (aiParsedData.skills as any).split(",").map((s: string) => s.trim());
       }
 
       // 2. Create the Resume record attached to the candidate
@@ -147,7 +148,24 @@ export const POST = routeHandler(
         "Candidate created automatically via resume parsing"
       );
 
-      // 3. Complete Job
+      // 3. Auto-apply to job if targetJobId was provided
+      if (targetJobId) {
+        try {
+          await applicationsService.create(
+            {
+              candidateId: candidate.id,
+              jobId: targetJobId,
+              notes: "Auto-applied during resume bulk upload",
+            },
+            auth.companyId
+          );
+        } catch (err: any) {
+          // Ignore if they already applied
+          logger.warn({ err: err.message }, "Could not auto-apply candidate to job");
+        }
+      }
+
+      // 4. Complete Job
       await prisma.parsingJob.update({
         where: { id: parsingJob.id },
         data: { status: "COMPLETED", completedAt: new Date(), progress: 100 }

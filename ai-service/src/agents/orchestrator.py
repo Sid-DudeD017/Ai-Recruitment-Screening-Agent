@@ -10,7 +10,8 @@ def get_llm():
     return ChatGoogleGenerativeAI(
         model=settings.GEMINI_MODEL,
         temperature=0,
-        google_api_key=settings.GEMINI_API_KEY
+        google_api_key=settings.GEMINI_API_KEY,
+        timeout=60
     )
 
 def orchestrate(state: GraphState) -> dict:

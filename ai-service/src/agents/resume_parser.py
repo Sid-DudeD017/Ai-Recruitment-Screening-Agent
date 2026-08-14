@@ -86,8 +86,8 @@ def parse_resume_node(state: GraphState) -> dict:
                 break
             except Exception as e:
                 if "429" in str(e) and attempt < max_retries - 1:
-                    print(f"RATE LIMIT HIT (429). Retrying in 15 seconds... (Attempt {attempt + 1}/{max_retries})")
-                    time.sleep(15)
+                    print(f"RATE LIMIT HIT (429). Retrying in 35 seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(35)
                 else:
                     raise e
 
