@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../src/infrastructure/database/prisma.client'
 
-const prisma = new PrismaClient()
-
-async function main() {
+async function run() {
   const apps = await prisma.application.findMany({
     where: {
       status: { in: ['APPLIED', 'SCREENING'] },
@@ -23,6 +21,6 @@ async function main() {
   console.log(`Fixed ${fixed} applications.`);
 }
 
-main()
+run()
   .catch(console.error)
   .finally(() => prisma.$disconnect())
