@@ -7,6 +7,8 @@ import { aiClient } from "@/infrastructure/ai/ai-client";
 import { AppError } from "@/shared/errors";
 import { APP_CONSTANTS } from "@/config";
 import { createModuleLogger } from "@/shared/utils/logger";
+// NEW: Import the applications service
+import { applicationsService } from "@/modules/applications/applications.service";
 
 const logger = createModuleLogger("auto-parse");
 
@@ -35,6 +37,8 @@ export const POST = routeHandler(
     }
 
     const existingJobId = formData.get("jobId") as string | null;
+    // NEW: Get the target job ID
+    const applyToJobId = formData.get("applyToJobId") as string | null;
 
     // 0. Create or Get ParsingJob
     let parsingJob;
@@ -147,7 +151,23 @@ export const POST = routeHandler(
         "Candidate created automatically via resume parsing"
       );
 
-      // 3. Complete Job
+      // NEW: 3. Auto-Apply to Job if applyToJobId is provided
+      if (applyToJobId) {
+        try {
+          await applicationsService.create({ candidateId: candidate.id, jobId: applyToJobId }, auth.companyId);
+          logger.info({ candidateId: candidate.id, jobId: applyToJobId }, "Auto-applied candidate to job");
+        } catch (applyErr: any) {
+          // If they already applied (409), that's fine, we still parsed the resume successfully.
+          if (applyErr?.statusCode === 409 || applyErr?.code === 'DUPLICATE_APPLICATION') {
+            logger.info({ candidateId: candidate.id, jobId: applyToJobId }, "Candidate already applied to job. Skipping auto-apply.");
+          } else {
+            logger.error({ err: applyErr, candidateId: candidate.id, jobId: applyToJobId }, "Failed to auto-apply candidate");
+            // We do not throw the error here because the resume parsing itself was successful.
+          }
+        }
+      }
+
+      // 4. Complete Job
       await prisma.parsingJob.update({
         where: { id: parsingJob.id },
         data: { status: "COMPLETED", completedAt: new Date(), progress: 100 }

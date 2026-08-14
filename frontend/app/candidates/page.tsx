@@ -48,6 +48,9 @@ export default function CandidatesPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ total: number, current: number, currentFileName: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // NEW: State for Auto-Apply Job Selection
+  const [selectedJobIdForUpload, setSelectedJobIdForUpload] = useState<string>('')
 
   // Apply to Job State
   const [applyingCandidateId, setApplyingCandidateId] = useState<string | null>(null)
@@ -123,11 +126,13 @@ export default function CandidatesPage() {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
+    if (!selectedJobIdForUpload) return; // Prevent drop if no job selected
     const files = Array.from(e.dataTransfer.files)
     await processFiles(files)
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedJobIdForUpload) return; // Prevent select if no job selected
     if (e.target.files) {
       const files = Array.from(e.target.files)
       await processFiles(files)
@@ -209,6 +214,10 @@ export default function CandidatesPage() {
         formData.append('file', uploadFile)
         if (precreatedJobs[i] && precreatedJobs[i].id) {
           formData.append('jobId', precreatedJobs[i].id);
+        }
+        // NEW: Send the job ID to auto-apply
+        if (selectedJobIdForUpload) {
+          formData.append('applyToJobId', selectedJobIdForUpload);
         }
         
         // Fetch a fresh token for EACH file because the loop can take several minutes and Clerk tokens expire quickly (60s)
@@ -325,53 +334,79 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      {/* Bulk Upload Dropzone */}
-      <div 
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-      >
-        <input 
-          type="file" 
-          multiple 
-          accept=".zip,.pdf" 
-          className="hidden" 
-          ref={fileInputRef}
-          onChange={handleFileSelect}
-        />
-        
-        {uploadProgress ? (
-          <div className="max-w-md mx-auto space-y-4">
-            <h3 className="font-bold text-gray-900 text-lg">AI Parsing Resumes...</h3>
-            <p className="text-sm text-gray-500">Extracting: {uploadProgress.currentFileName}</p>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className="bg-indigo-600 h-3 rounded-full transition-all duration-300" 
-                style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-              ></div>
-            </div>
-            <p className="text-xs font-semibold text-indigo-700">{uploadProgress.current} / {uploadProgress.total} completed</p>
+      {/* Bulk Upload Section */}
+      <div className="bg-white border rounded-xl shadow-sm p-6 space-y-6">
+        <div>
+          <h2 className="font-bold text-gray-800 mb-2">1. Select Job for Auto-Apply</h2>
+          <select
+            value={selectedJobIdForUpload}
+            onChange={(e) => setSelectedJobIdForUpload(e.target.value)}
+            className="w-full max-w-md p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+          >
+            <option value="">-- Select an open position --</option>
+            {jobs.map(job => (
+              <option key={job.id} value={job.id}>{job.title}</option>
+            ))}
+          </select>
+          {!selectedJobIdForUpload && (
+            <p className="text-sm text-red-500 mt-2">You must select a job before uploading resumes.</p>
+          )}
+        </div>
+
+        <div>
+          <h2 className="font-bold text-gray-800 mb-2">2. Upload Resumes</h2>
+          {/* Bulk Upload Dropzone */}
+          <div 
+            className={`border-2 border-dashed rounded-xl p-10 text-center transition ${!selectedJobIdForUpload ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50' : isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:bg-gray-50 cursor-pointer'}`}
+            onDragOver={(e) => { e.preventDefault(); if (selectedJobIdForUpload) setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => { if (selectedJobIdForUpload) fileInputRef.current?.click() }}
+          >
+            <input 
+              type="file" 
+              multiple 
+              accept=".zip,.pdf" 
+              className="hidden" 
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              disabled={!selectedJobIdForUpload}
+            />
+            
+            {uploadProgress ? (
+              <div className="max-w-md mx-auto space-y-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-bold text-gray-900 text-lg">AI Parsing Resumes...</h3>
+                <p className="text-sm text-gray-500">Extracting: {uploadProgress.currentFileName}</p>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-indigo-600 h-3 rounded-full transition-all duration-300" 
+                    style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs font-semibold text-indigo-700">{uploadProgress.current} / {uploadProgress.total} completed</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-3">
+                <div className="bg-indigo-100 p-4 rounded-full">
+                  <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-lg">Drag & Drop Resumes Here</p>
+                  <p className="text-sm text-gray-500 mt-1">Upload a <span className="font-bold text-gray-700">.zip</span> file containing multiple PDFs, or select multiple <span className="font-bold text-gray-700">.pdf</span> files directly.</p>
+                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); if (selectedJobIdForUpload) fileInputRef.current?.click() }}
+                  disabled={!selectedJobIdForUpload}
+                  className={`mt-4 px-6 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg transition ${!selectedJobIdForUpload ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                >
+                  Browse Files
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center space-y-3">
-            <div className="bg-indigo-100 p-4 rounded-full">
-              <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-              </svg>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-lg">Drag & Drop Resumes Here</p>
-              <p className="text-sm text-gray-500 mt-1">Upload a <span className="font-bold text-gray-700">.zip</span> file containing multiple PDFs, or select multiple <span className="font-bold text-gray-700">.pdf</span> files directly.</p>
-            </div>
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-4 px-6 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition"
-            >
-              Browse Files
-            </button>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Resume Parsing History */}
