@@ -38,7 +38,6 @@ export const POST = routeHandler(
       );
     }
 
-    const existingJobId = formData.get("jobId") as string | null;
     // NEW: Get the target job ID
     const applyToJobId = formData.get("applyToJobId") as string | null;
 
