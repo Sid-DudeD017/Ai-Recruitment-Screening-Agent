@@ -431,10 +431,10 @@ export default function CandidatesPage() {
                     <td className="px-6 py-4 font-medium text-gray-900 truncate max-w-[200px]" title={job.fileName}>{job.fileName}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
-                        job.status === 'COMPLETED' ? 'bg-green-100 text-green-800 border border-green-200' :
-                        job.status === 'FAILED' ? 'bg-red-100 text-red-800 border border-red-200' :
-                        job.status === 'PARSING' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                        'bg-gray-100 text-gray-800 border border-gray-200'
+                        job.status === 'COMPLETED' ? 'bg-green-600 text-white border border-green-700' :
+                        job.status === 'FAILED' ? 'bg-red-600 text-white border border-red-700' :
+                        job.status === 'PARSING' ? 'bg-blue-600 text-white border border-blue-700' :
+                        'bg-gray-600 text-white border border-gray-700'
                       }`}>
                         {job.status}
                       </span>
@@ -480,17 +480,18 @@ export default function CandidatesPage() {
 
                     <div className="flex flex-col sm:items-end gap-2">
                       <div className="flex items-center gap-3">
-                        {hasResume && (
-                          <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 text-xs px-2.5 py-1.5 rounded-md font-medium">
+                        {hasResume ? (
+                          <span className="inline-flex items-center gap-1 bg-green-600 text-white border border-green-700 text-xs px-2.5 py-1.5 rounded-md font-medium shadow-sm">
                             ✓ AI Parsed Resume
                           </span>
+                        ) : (
+                          <button
+                            onClick={() => setApplyingCandidateId(applyingCandidateId === c.id ? null : c.id)}
+                            className="bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-sm font-medium px-4 py-2 rounded-lg transition"
+                          >
+                            Apply to Job
+                          </button>
                         )}
-                        <button
-                          onClick={() => setApplyingCandidateId(applyingCandidateId === c.id ? null : c.id)}
-                          className="bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 text-sm font-medium px-4 py-2 rounded-lg transition"
-                        >
-                          Apply to Job
-                        </button>
                       </div>
                       
                       {/* Job Apply Dropdown */}
