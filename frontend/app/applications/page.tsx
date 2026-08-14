@@ -101,18 +101,40 @@ export default function ApplicationsPage() {
     const token = await getToken()
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
     let currentProcessed = 0
+    let rejectedCount = 0
+    
     for (const app of appsToProcess) {
       try {
-        const freshToken = await getToken()
-        const res = await fetch(`${baseUrl}/ai/match`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${freshToken}` },
-          body: JSON.stringify({ applicationId: app.id })
-        })
-        if (res.ok) {
-          const json = await res.json()
-          const score = json.data?.matchScore || 0
-          const targetStatus = score > 75 ? 'PENDING_REVIEW' : 'SCREENING'
+        let score = app.matchScore;
+        let aiAnalysis = app.aiAnalysis;
+        let matchAnalysis = app.matchAnalysis;
+        
+        // If it doesn't have a score yet, fetch from AI
+        if (score == null) {
+          const freshToken = await getToken()
+          const res = await fetch(`${baseUrl}/ai/match`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${freshToken}` },
+            body: JSON.stringify({ applicationId: app.id })
+          })
+          if (res.ok) {
+            const json = await res.json()
+            score = json.data?.matchScore || 0
+            aiAnalysis = json.data?.recommendation || json.data?.analysis || app.aiAnalysis
+            matchAnalysis = typeof json.data?.analysis === 'string' ? json.data.analysis : app.matchAnalysis
+          } else {
+            const errData = await res.json().catch(() => null)
+            const errMsg = errData?.error?.message || `HTTP ${res.status}`
+            setError(prev => prev ? `${prev} | App ${app.id}: ${errMsg}` : `Error on App ${app.id}: ${errMsg}`)
+            score = 0; // fallback to reject if AI fails, or could skip
+          }
+        }
+
+        // Now move the candidate based on their score (either pre-existing or newly fetched)
+        if (score != null) {
+          const targetStatus = score > 75 ? 'PENDING_REVIEW' : (score >= 50 ? 'SCREENING' : 'REJECTED');
+          if (targetStatus === 'REJECTED') rejectedCount++;
+          
           if (targetStatus !== app.status) {
             await fetch(`${baseUrl}/applications/${app.id}/status`, {
               method: 'PATCH',
@@ -129,12 +151,23 @@ export default function ApplicationsPage() {
       } catch (err) {
         setError(prev => prev ? `${prev} | App ${app.id}: Network Error` : `Network error on App ${app.id}`)
       }
+      
       currentProcessed++
       setBatchProgress(prev => prev ? { ...prev, current: currentProcessed } : null)
-      if (currentProcessed < appsToProcess.length) await new Promise(resolve => setTimeout(resolve, 4000))
+      
+      // Only wait if we actually made a network call to the AI to avoid hitting rate limits
+      if (app.matchScore == null && currentProcessed < appsToProcess.length) {
+        await new Promise(resolve => setTimeout(resolve, 4000))
+      }
     }
     setIsBatchScoring(false)
     setBatchProgress(null)
+    
+    if (rejectedCount > 0) {
+      alert(`Batch processing complete. ${rejectedCount} candidates were below the threshold and have been automatically rejected and sent rejection emails.`)
+    } else if (currentProcessed > 0 && !error) {
+      alert(`Batch processing complete. All candidates successfully passed the threshold.`)
+    }
   }
 
   const handleApproveAndSend = () => {
@@ -208,10 +241,10 @@ export default function ApplicationsPage() {
           </select>
           <button
             onClick={handleAIAutoProcessAll}
-            disabled={isBatchScoring || !activeJobId || remainingToProcessCount === 0}
-            style={{ backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', opacity: (isBatchScoring || !activeJobId || remainingToProcessCount === 0) ? 0.5 : 1, whiteSpace: 'nowrap' }}
+            disabled={isBatchScoring || !activeJobId || ingestionApps.length === 0}
+            style={{ backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', opacity: (isBatchScoring || !activeJobId || ingestionApps.length === 0) ? 0.5 : 1, whiteSpace: 'nowrap' }}
           >
-            {isBatchScoring ? 'Processing...' : `✨ Process Remaining (${remainingToProcessCount})`}
+            {isBatchScoring ? 'Processing...' : `✨ Process Remaining (${ingestionApps.length})`}
           </button>
         </div>
       </div>

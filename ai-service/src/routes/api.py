@@ -8,7 +8,7 @@ router = APIRouter()
 workflow = create_workflow()
 
 @router.post("/hiring-workflow", response_model=APIResponse)
-async def start_hiring_workflow(request: StartWorkflowRequest):
+def start_hiring_workflow(request: StartWorkflowRequest):
     """
     Start a new hiring workflow.
     """
@@ -48,7 +48,7 @@ async def start_hiring_workflow(request: StartWorkflowRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/hiring-workflow/{workflow_id}/resume", response_model=APIResponse)
-async def resume_hiring_workflow(workflow_id: str, request: ResumeWorkflowRequest):
+def resume_hiring_workflow(workflow_id: str, request: ResumeWorkflowRequest):
     """
     Resume a paused workflow after human review.
     """
@@ -89,7 +89,7 @@ async def resume_hiring_workflow(workflow_id: str, request: ResumeWorkflowReques
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/rank")
-async def rank_candidates_endpoint(request: RankRequest):
+def rank_candidates_endpoint(request: RankRequest):
     """
     Ranks multiple candidates based on their evaluations.
     """
@@ -139,7 +139,7 @@ class BiasRequest(BaseModel):
     requirements: str
 
 @router.post("/parse-resume")
-async def parse_resume_endpoint(request: ParseResumeRequest):
+def parse_resume_endpoint(request: ParseResumeRequest):
     try:
         # Fetch the PDF from the URL
         response = requests.get(request.fileUrl)
@@ -159,9 +159,9 @@ async def parse_resume_endpoint(request: ParseResumeRequest):
 import docx
 
 @router.post("/upload-and-parse-resume")
-async def upload_and_parse_resume_endpoint(file: UploadFile = File(...)):
+def upload_and_parse_resume_endpoint(file: UploadFile = File(...)):
     try:
-        content = await file.read()
+        content = file.file.read()
         resume_text = ""
         
         if file.filename.lower().endswith(".docx") or file.filename.lower().endswith(".doc"):
@@ -183,7 +183,7 @@ async def upload_and_parse_resume_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to parse resume: {str(e)}")
 
 @router.post("/analyze-job")
-async def analyze_job_endpoint(request: AnalyzeJobRequest):
+def analyze_job_endpoint(request: AnalyzeJobRequest):
     try:
         combined_desc = f"Title: {request.title}\nDescription: {request.description}\nRequirements: {request.requirements}"
         res = analyze_job_node({"job_description": combined_desc})
@@ -192,7 +192,7 @@ async def analyze_job_endpoint(request: AnalyzeJobRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/match")
-async def match_endpoint(request: MatchRequest):
+def match_endpoint(request: MatchRequest):
     try:
         parsed_job = {
             "required_experience": request.jobRequirements,
@@ -208,7 +208,7 @@ async def match_endpoint(request: MatchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/check-bias")
-async def check_bias_endpoint(request: BiasRequest):
+def check_bias_endpoint(request: BiasRequest):
     try:
         parsed_job = {
             "title": request.jobTitle,
@@ -237,7 +237,7 @@ class EmailRequest(BaseModel):
     additionalContext: str | None = None
 
 @router.post("/schedule-interview")
-async def schedule_interview_endpoint(request: InterviewRequest):
+def schedule_interview_endpoint(request: InterviewRequest):
     try:
         # Pack the incoming fields into the interview_requirements dict expected by the node
         interview_requirements = {
@@ -262,7 +262,7 @@ async def schedule_interview_endpoint(request: InterviewRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/generate-email")
-async def generate_email_endpoint(request: EmailRequest):
+def generate_email_endpoint(request: EmailRequest):
     try:
         decision = "APPROVE" if request.type == "interview_invite" else "REJECT" if request.type == "rejection" else request.type.upper()
         

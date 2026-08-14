@@ -22,6 +22,8 @@ export const POST = routeHandler(
     // Parse the multipart form data
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const targetJobId = formData.get("targetJobId") as string | null;
+    const existingJobId = formData.get("jobId") as string | null;
 
     if (!file) {
       throw new AppError("No file provided", 400, "FILE_REQUIRED");
@@ -129,8 +131,8 @@ export const POST = routeHandler(
       let safeSkills: string[] = [];
       if (Array.isArray(aiParsedData.skills)) {
         safeSkills = aiParsedData.skills.map((s: any) => String(s));
-      } else if (typeof aiParsedData.skills === "string") {
-        safeSkills = aiParsedData.skills.split(",").map((s: string) => s.trim());
+      } else if (typeof (aiParsedData.skills as any) === "string") {
+        safeSkills = (aiParsedData.skills as any).split(",").map((s: string) => s.trim());
       }
 
       // 2. Create the Resume record attached to the candidate
