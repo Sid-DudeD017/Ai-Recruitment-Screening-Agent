@@ -20,10 +20,12 @@ export default function CreateJobPage() {
   
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
     setLoading(true)
     
     try {
@@ -48,6 +50,9 @@ export default function CreateJobPage() {
       
       if (!res.ok) {
         const errData = await res.json().catch(() => null)
+        if (errData?.error?.errors) {
+          setFieldErrors(errData.error.errors)
+        }
         throw new Error(errData?.error?.message || 'Failed to create job')
       }
       
@@ -68,7 +73,14 @@ export default function CreateJobPage() {
 
       {error && (
         <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
-          <p>{error}</p>
+          <p className="font-medium">{error}</p>
+          {Object.keys(fieldErrors).length > 0 && (
+            <ul className="mt-2 list-disc list-inside text-sm">
+              {Object.entries(fieldErrors).map(([field, msgs]) => (
+                <li key={field}>{msgs[0]}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -82,6 +94,9 @@ export default function CreateJobPage() {
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           />
+          {fieldErrors.title && (
+            <p className="mt-1 text-sm text-red-600">{fieldErrors.title[0]}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -94,6 +109,9 @@ export default function CreateJobPage() {
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             />
+            {fieldErrors.location && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.location[0]}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Type</label>
@@ -109,6 +127,9 @@ export default function CreateJobPage() {
               <option value="REMOTE">Remote</option>
               <option value="INTERNSHIP">Internship</option>
             </select>
+            {fieldErrors.type && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.type[0]}</p>
+            )}
           </div>
         </div>
         
@@ -121,6 +142,9 @@ export default function CreateJobPage() {
               value={formData.salaryMin}
               onChange={(e) => setFormData({ ...formData, salaryMin: e.target.value })}
             />
+            {fieldErrors.salaryMin && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.salaryMin[0]}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Maximum Salary (Optional)</label>
@@ -130,6 +154,9 @@ export default function CreateJobPage() {
               value={formData.salaryMax}
               onChange={(e) => setFormData({ ...formData, salaryMax: e.target.value })}
             />
+            {fieldErrors.salaryMax && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.salaryMax[0]}</p>
+            )}
           </div>
         </div>
 
@@ -142,6 +169,9 @@ export default function CreateJobPage() {
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
+          {fieldErrors.description && (
+            <p className="mt-1 text-sm text-red-600">{fieldErrors.description[0]}</p>
+          )}
         </div>
         
         <div>
@@ -153,6 +183,9 @@ export default function CreateJobPage() {
             value={formData.requirements}
             onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
           />
+          {fieldErrors.requirements && (
+            <p className="mt-1 text-sm text-red-600">{fieldErrors.requirements[0]}</p>
+          )}
         </div>
 
         <button
