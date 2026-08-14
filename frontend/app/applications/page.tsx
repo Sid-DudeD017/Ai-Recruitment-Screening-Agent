@@ -142,11 +142,7 @@ export default function ApplicationsPage() {
               body: JSON.stringify({ status: targetStatus })
             })
           }
-          setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: targetStatus, matchScore: score, aiAnalysis: json.data?.recommendation || json.data?.analysis || a.aiAnalysis, matchAnalysis: typeof json.data?.analysis === 'string' ? json.data.analysis : a.matchAnalysis } : a))
-        } else {
-          const errData = await res.json().catch(() => null)
-          const errMsg = errData?.error?.message || `HTTP ${res.status}`
-          setError(prev => prev ? `${prev} | App ${app.id}: ${errMsg}` : `Error on App ${app.id}: ${errMsg}`)
+          setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: targetStatus, matchScore: score, aiAnalysis, matchAnalysis } : a))
         }
       } catch (err) {
         setError(prev => prev ? `${prev} | App ${app.id}: Network Error` : `Network error on App ${app.id}`)
