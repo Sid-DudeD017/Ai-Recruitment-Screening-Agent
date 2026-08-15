@@ -1,48 +1,38 @@
 # 🤖 AI Recruitment Screening Agent (Full Stack)
 
-An intelligent, multi-stage AI platform that automates candidate screening. The platform features a **Next.js Frontend UI**, a **Next.js Backend API** powered by a Neon Postgres Database and Clerk Authentication, and a **Python FastAPI Agent** built with LangGraph, LangChain, and Google Gemini to handle intelligent PDF parsing, candidate matching, and email generation.
+## Overview
+An intelligent, multi-stage AI platform that automates candidate screening. The platform seamlessly handles real-time PDF resume uploads, parses them intelligently, and semantically scores each candidate against job requirements. Finally, it detects bias and automatically drafts professional outreach or rejection emails based on the match outcome.
 
-## 🔗 Links
-
-- **Live Deployment:** [[Ai-Recruitment-Screening-Platform](https://ai-recruitment-screening-agent-m8kq.vercel.app/)]
+**🔗 Links**
+- **Live Deployment:** [Insert Deployed Link Here]
 - **Demo Video:** [Insert Demo Video Link Here]
 
 ---
 
-## ✨ Features
-
-| Feature | Description |
+## Tech Stack
+| Component | Technology |
 |---|---|
-| 🔒 **Authentication** | Secure user login and management via **Clerk**. |
-| 🗄️ **Database** | Fully typed schema with **Prisma** and **Neon Database (Postgres)**. |
-| 📄 **Resume PDF Uploads** | Upload real PDF resumes from the UI. The Backend forwards the files to the Python API where they are processed via OCR (`pdfplumber`). |
-| 📝 **Intelligent Resume Parsing** | Identifies candidate name, skills, years of experience, and education from raw resume text using Gemini LLMs. |
-| 🎯 **Candidate Matching (FAISS Vector Store)** | Scores each candidate (0–100) based on how well they fit the job requirements, leveraging an integrated scoring system and semantic search. |
-| ⚖️ **Bias Detection** | AI reviews match reasoning for potential bias (gender, race, age, education-tier bias, etc.). |
-| ✉️ **Email Generation** | Auto-drafts a professional outreach or rejection email based on the match outcome. |
+| **Frontend UI** | Next.js 16.3+, React, Tailwind CSS |
+| **Backend API** | Next.js 16.3+ (API Routes) |
+| **Database** | Neon Serverless Postgres, Prisma ORM |
+| **Authentication** | Clerk |
+| **AI Agent Service** | Python, FastAPI |
+| **AI Orchestration** | LangGraph, LangChain |
+| **LLM Inference** | Google Gemini (gemini-3.5-flash) |
+| **Vector Search** | FAISS |
+| **OCR/Parsing** | pdfplumber, python-multipart |
+| **Data Validation** | Pydantic |
 
 ---
 
-## 🏗️ Architecture
-
-The platform is split into three main components that run concurrently:
-
-1. **Frontend (Next.js 16.3+ - Port 3000)**: Displays candidate lists, job matching UI, and a drag-and-drop file uploader for resumes.
-2. **Backend (Next.js 16.3+ - Port 3001)**: Handles authentication validation, Prisma database connections using the `@neondatabase/serverless` and `@prisma/adapter-neon` drivers, optionally Vercel Blob Storage for files, and forwards AI tasks to the Python Agent.
-3. **AI Agent (Python FastAPI - Port 8000)**: Runs the LangGraph state machine. It accepts uploaded PDFs, extracts text, runs the LLM screening pipeline, and returns structured JSON (Pydantic models) back to the Backend.
-
----
-
-## 🚀 Getting Started Locally
+## Setup
 
 ### Prerequisites
-
 - **Node.js** (v18+)
 - **Python** (3.9+)
-- **Keys**: You will need a Google Studio Gemini API key (`gemini-3.5-flash` recommended), a Clerk account (Publishable/Secret keys), and a Postgres connection string (e.g., from Neon).
+- **API Keys**: Google Studio Gemini API key, Clerk (Publishable/Secret keys), and a Postgres connection string (e.g., Neon).
 
 ### 1. Installation
-
 Clone the repository and install all dependencies for the 3 services:
 
 ```bash
@@ -63,7 +53,6 @@ cd ..
 ```
 
 ### 2. Environment Variables
-
 You need to set up three environment files.
 
 **1. Root Directory (`.env`)**
@@ -83,7 +72,6 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 CLERK_WEBHOOK_SECRET=whsec_...
 AI_SERVICE_URL=http://localhost:8000
-# (Optional) BLOB_READ_WRITE_TOKEN=...
 ```
 
 **3. Frontend Directory (`frontend/.env.local`)**
@@ -95,9 +83,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
 ### 3. Generate and Seed the Database
-
-Before starting the server for the first time, generate the Prisma Client and seed your Neon Database with dummy data (Candidates, Jobs, Applications) so the UI displays correctly:
-
+Generate the Prisma Client and seed your Neon Database with dummy data so the UI displays correctly:
 ```bash
 cd Backend
 npx prisma generate
@@ -107,7 +93,6 @@ cd ..
 ```
 
 ### 4. Start the Platform
-
 You will need to open three separate terminal windows to run the three services concurrently:
 
 **Terminal 1: Start the Python AI Agent (Port 8000)**
@@ -129,40 +114,36 @@ cd frontend
 npm run dev
 ```
 
-You can now open your browser to `http://localhost:3000` and test out the platform! Upload a real PDF resume on the Candidates page to watch the end-to-end extraction and database syncing in action.
+You can now open your browser to `http://localhost:3000` and test out the platform!
 
 ---
 
-## ⚠️ Important Configuration Notes
-
-### 1. Prisma Neon Adapter (WebSockets)
-When running the Backend via Node.js locally (instead of Edge), the Neon Serverless driver requires an explicit `ws` polyfill to function. This has already been patched in `prisma.client.ts`:
-```typescript
-import ws from "ws";
-import { neonConfig } from "@neondatabase/serverless";
-neonConfig.webSocketConstructor = ws;
-```
-
-### 2. Next.js 16.3 Middleware vs Proxy
-As of Next.js 16.3, `middleware.ts` is deprecated in favor of `proxy.ts`. Ensure you **do not** have both files in your `Backend/src` directory, as having both will cause the server to crash instantly with an Unhandled Rejection.
+## Features
+* 🔒 **Authentication:** Secure user login and management via Clerk.
+* 🗄️ **Database:** Fully typed schema with Prisma and Neon Database.
+* 📄 **Resume PDF Uploads:** Drag-and-drop UI to upload raw PDF files which are processed concurrently via OCR.
+* 📝 **Intelligent Resume Parsing:** Identifies candidate name, skills, years of experience, and education from unstructured text using Gemini LLMs.
+* 🎯 **Candidate Matching:** Scores candidates (0–100) based on how well their parsed profile matches the target job requirements using an integrated FAISS Vector Store scoring system.
+* ⚖️ **Bias Detection:** AI automatically reviews match reasoning for potential bias across gender, race, age, and education tiers.
+* ✉️ **Email Generation:** Auto-drafts a professional outreach or rejection email based on the candidate's final screening status.
 
 ---
 
-## 🛠️ Tech Stack
+## Technical Workflow
 
-| Library | Purpose |
-|---|---|
-| **Next.js / React** | Full-stack web framework |
-| **Prisma & Neon** | Database ORM and Serverless Postgres |
-| **Clerk** | Authentication & User Management |
-| **FastAPI** | High-performance Python API Server |
-| **LangGraph / LangChain** | Stateful, graph-based agent orchestration |
-| **Google Gemini / FAISS** | LLM inference and Vector Store semantic search |
-| **pdfplumber / python-multipart** | Raw file upload handling and OCR text extraction |
-| **Pydantic** | Data validation and structured output schemas |
+The platform operates across three main distributed components that work concurrently to process data:
 
----
+1. **Frontend (Next.js - Port 3000):**
+   Provides the interactive UI. When a recruiter drops a batch of PDF resumes into the uploader, the Frontend manages concurrency limits and token refreshing before streaming the files directly to the Backend API.
 
-## 📄 License
+2. **Backend (Next.js - Port 3001):**
+   Acts as the central router and database controller. 
+   - It intercepts the file streams, creates `ParsingJob` records in the Neon database to track progress, and acts as a proxy to securely forward the files to the Python Agent.
+   - It utilizes the `@neondatabase/serverless` WebSockets driver for Edge compatibility.
+   - Upon receiving the structured data back from the Agent, it populates the `Candidate` and `Resume` models and performs auto-application associations.
 
-This project is open source and available under the [MIT License](LICENSE).
+3. **AI Agent (Python FastAPI - Port 8000):**
+   Handles all machine-learning and heavy processing. 
+   - Exposes REST endpoints to receive the raw PDFs.
+   - Uses `pdfplumber` to extract text and `LangGraph` + `LangChain` to route the data through an intelligent workflow.
+   - Uses `gemini-3.5-flash` with exponential backoff to navigate rate limits, extracts structured JSON representations via `Pydantic` schemas, computes FAISS embedding scores, and returns the strictly-typed response payload.
