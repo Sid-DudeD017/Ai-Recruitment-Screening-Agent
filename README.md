@@ -4,7 +4,7 @@ An intelligent, multi-stage AI platform that automates candidate screening. The 
 
 ## 🔗 Links
 
-- **Live Deployment:** [Insert Deployed Link Here]
+- **Live Deployment:** [[Ai-Recruitment-Screening-Platform](https://ai-recruitment-screening-agent-m8kq.vercel.app/)]
 - **Demo Video:** [Insert Demo Video Link Here]
 
 ---
