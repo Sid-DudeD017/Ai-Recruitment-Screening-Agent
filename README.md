@@ -4,7 +4,7 @@
 An intelligent, multi-stage AI platform that automates candidate screening. The platform seamlessly handles real-time PDF resume uploads, parses them intelligently, and semantically scores each candidate against job requirements. Finally, it detects bias and automatically drafts professional outreach or rejection emails based on the match outcome.
 
 **🔗 Links**
-- **Live Deployment:** [Insert Deployed Link Here]
+- **Live Deployment:** [Ai-Recruitment-Screening-Agent](https://ai-recruitment-screening-agent-m8kq.vercel.app/)
 - **Demo Video:** [Insert Demo Video Link Here]
 
 ---
