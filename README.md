@@ -108,17 +108,26 @@ cd ..
 
 ### 4. Start the Platform
 
-A unified startup script `start.sh` is provided in the root directory to boot all 3 services at once.
+You will need to open three separate terminal windows to run the three services concurrently:
 
+**Terminal 1: Start the Python AI Agent (Port 8000)**
 ```bash
-chmod +x start.sh
-./start.sh
+cd ai-service
+source ../venv/bin/activate  # Or your virtual environment
+uvicorn src.main:app --reload --port 8000
 ```
 
-**What this does:**
-1. Starts the **Python API** on `http://localhost:8000`
-2. Runs `npx prisma db push` and starts the **Next.js Backend** on `http://localhost:3001`
-3. Starts the **Next.js Frontend** on `http://localhost:3000`
+**Terminal 2: Start the Next.js Backend (Port 3001)**
+```bash
+cd Backend
+npm run dev
+```
+
+**Terminal 3: Start the Next.js Frontend (Port 3000)**
+```bash
+cd frontend
+npm run dev
+```
 
 You can now open your browser to `http://localhost:3000` and test out the platform! Upload a real PDF resume on the Candidates page to watch the end-to-end extraction and database syncing in action.
 
