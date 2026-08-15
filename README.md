@@ -2,6 +2,11 @@
 
 An intelligent, multi-stage AI platform that automates candidate screening. The platform features a **Next.js Frontend UI**, a **Next.js Backend API** powered by a Neon Postgres Database and Clerk Authentication, and a **Python FastAPI Agent** built with LangGraph, LangChain, and Google Gemini to handle intelligent PDF parsing, candidate matching, and email generation.
 
+## 🔗 Links
+
+- **Live Deployment:** [Insert Deployed Link Here]
+- **Demo Video:** [Insert Demo Video Link Here]
+
 ---
 
 ## ✨ Features
@@ -34,7 +39,7 @@ The platform is split into three main components that run concurrently:
 
 - **Node.js** (v18+)
 - **Python** (3.9+)
-- **Keys**: You will need a Google Studio Gemini API key, a Clerk account (Publishable/Secret keys), and a Postgres connection string (e.g., from Neon).
+- **Keys**: You will need a Google Studio Gemini API key (`gemini-3.5-flash` recommended), a Clerk account (Publishable/Secret keys), and a Postgres connection string (e.g., from Neon).
 
 ### 1. Installation
 
@@ -44,14 +49,15 @@ Clone the repository and install all dependencies for the 3 services:
 # 1. Setup Python Agent
 python3 -m venv venv
 source venv/bin/activate        # macOS/Linux
-pip install -r requirements.txt
+pip install -r ai-service/requirements.txt
 
 # 2. Setup Next.js Backend
 cd Backend
 npm install
+cd ..
 
 # 3. Setup Next.js Frontend
-cd ../frontend
+cd frontend
 npm install
 cd ..
 ```
@@ -64,6 +70,8 @@ You need to set up three environment files.
 Create a `.env` file in the root for the Python Agent:
 ```env
 GEMINI_API_KEY=AIzaSy...
+GEMINI_MODEL=gemini-3.5-flash
+APP_PORT=8000
 ```
 
 **2. Backend Directory (`Backend/.env`)**
