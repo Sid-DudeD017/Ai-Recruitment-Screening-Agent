@@ -144,6 +144,7 @@ export default function InterviewsAndEmailsPage() {
   const [emailSubject, setEmailSubject] = useState<string>('')
   const [emailBody, setEmailBody] = useState<string>('')
   const [isGeneratingEmail, setIsGeneratingEmail] = useState<boolean>(false)
+  const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false)
 
   // Email Template Customization State
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false)

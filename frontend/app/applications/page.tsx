@@ -82,7 +82,21 @@ export default function ApplicationsPage() {
         if (!res.ok) throw new Error('Failed to fetch applications')
         const json = await res.json()
         const apps = Array.isArray(json.data) ? json.data : []
-        setApplications(apps.filter((a: Application) => a.jobId === activeJobId))
+        const filteredApps = apps.filter((a: Application) => a.jobId === activeJobId)
+        setApplications(filteredApps)
+
+        // AUTO PROMOTE BUGFIX: Automatically fix stranded candidates
+        const stranded = filteredApps.filter((a: Application) => (a.status === 'APPLIED' || a.status === 'SCREENING') && a.matchScore != null && a.matchScore > 75)
+        for (const app of stranded) {
+          try {
+            await fetch(`${baseUrl}/applications/${app.id}/status`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ status: 'PENDING_REVIEW' })
+            })
+            setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'PENDING_REVIEW' } : a))
+          } catch(e) {}
+        }
       } catch (err) {
         console.error(err)
         setError(err instanceof Error ? err.message : 'Unknown error fetching apps')
@@ -177,6 +191,25 @@ export default function ApplicationsPage() {
     if (!reviewingApp) return
     setApplications(prev => prev.map(app => app.id === reviewingApp.id ? { ...app, status: 'REJECTED' } : app))
     setReviewingApp(null)
+  }
+
+  const handleForceMove = async (appId: string) => {
+    try {
+      const token = await getToken();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const res = await fetch(`${baseUrl}/applications/${appId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'PENDING_REVIEW' })
+      });
+      if (res.ok) {
+        setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: 'PENDING_REVIEW' } : a));
+      } else {
+        alert('Failed to move candidate. Check backend status transition rules.');
+      }
+    } catch(err) {
+      console.error(err);
+    }
   }
 
   const handleDragStart = (e: React.DragEvent, appId: string) => { e.dataTransfer.setData('appId', appId) }
@@ -297,7 +330,13 @@ export default function ApplicationsPage() {
                   </thead>
                   <tbody>
                     {paginatedIngestionApps.map(app => (
-                      <tr key={app.id} style={S.row} className="transition hover:brightness-110">
+                      <tr 
+                        key={app.id} 
+                        style={{...S.row, cursor: 'grab'}} 
+                        className="transition hover:brightness-110"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, app.id)}
+                      >
                         <td style={{ padding: '16px 24px' }}>
                           <span style={{ color: '#ffffff', fontWeight: 600 }}>{app.candidate?.firstName} {app.candidate?.lastName}</span>
                           <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{app.job?.title || 'Unknown Job'}</div>
@@ -309,9 +348,15 @@ export default function ApplicationsPage() {
                         </td>
                         <td style={{ padding: '16px 24px' }}>
                           {app.matchScore != null ? (
-                            <span style={{ fontWeight: 700, color: app.matchScore > 75 ? '#4ade80' : '#94a3b8' }}>{Math.round(app.matchScore)}%</span>
+                            <div className="flex items-center gap-4">
+                              <span style={{ fontWeight: 700, color: app.matchScore > 75 ? '#4ade80' : '#94a3b8' }}>{Math.round(app.matchScore)}%</span>
+                              <button onClick={() => handleForceMove(app.id)} style={{fontSize: '10px', backgroundColor: '#334155', padding: '4px 8px', borderRadius: '4px', color: 'white'}}>Move to Review</button>
+                            </div>
                           ) : (
-                            <span style={{ color: '#475569', fontStyle: 'italic', fontSize: '12px' }}>Unscored</span>
+                            <div className="flex items-center gap-4">
+                              <span style={{ color: '#475569', fontStyle: 'italic', fontSize: '12px' }}>Unscored</span>
+                              <button onClick={() => handleForceMove(app.id)} style={{fontSize: '10px', backgroundColor: '#334155', padding: '4px 8px', borderRadius: '4px', color: 'white'}}>Move to Review</button>
+                            </div>
                           )}
                         </td>
                       </tr>
