@@ -34,6 +34,9 @@ export interface ApplicationWithRelations extends ApplicationDto {
     status: string;
     type: string;
   }>;
+  emailDraft?: {
+    status: string;
+  };
 }
 
 export interface UpdateApplicationStatusInput {
@@ -68,5 +71,6 @@ export function toApplicationDto(application: any): ApplicationWithRelations | A
     ...(application.candidate && { candidate: application.candidate }),
     ...(application.job && { job: application.job }),
     ...(application.interviews && { interviews: application.interviews }),
+    ...(application.emailDraft && { emailDraft: application.emailDraft }),
   };
 }

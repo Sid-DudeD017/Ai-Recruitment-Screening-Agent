@@ -99,6 +99,7 @@ export const applicationsRepository = {
             select: { id: true, firstName: true, lastName: true, email: true },
           },
           job: { select: { id: true, title: true, status: true } },
+          emailDraft: { select: { status: true } },
         },
       }),
       prisma.application.count({ where }),

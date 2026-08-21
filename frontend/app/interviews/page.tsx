@@ -28,6 +28,9 @@ interface Application {
   matchScore?: number
   candidate?: Candidate
   job?: Job
+  emailDraft?: {
+    status: string
+  }
 }
 
 interface Interview {
@@ -121,6 +124,7 @@ export default function InterviewsAndEmailsPage() {
 
   // Filter & Role Grouping State
   const [selectedRoleTitle, setSelectedRoleTitle] = useState<string>('ALL')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL')
 
   // Batch Scheduling State
   const [batchRoleTitle, setBatchRoleTitle] = useState<string>('')
@@ -128,7 +132,7 @@ export default function InterviewsAndEmailsPage() {
   const [batchDuration, setBatchDuration] = useState<number>(60)
   const [batchType, setBatchType] = useState<string>('VIDEO')
   const [batchStaggerMinutes, setBatchStaggerMinutes] = useState<number>(30)
-  const [batchMeetingLink, setBatchMeetingLink] = useState<string>('https://meet.google.com/recruitment-interview')
+  const [batchMeetingLink, setBatchMeetingLink] = useState<string>('https://meet.jit.si/recruitment-interview')
   const [isBatchScheduling, setIsBatchScheduling] = useState<boolean>(false)
 
   // Single Interview Reschedule Modal / State
@@ -145,6 +149,10 @@ export default function InterviewsAndEmailsPage() {
   const [emailBody, setEmailBody] = useState<string>('')
   const [isGeneratingEmail, setIsGeneratingEmail] = useState<boolean>(false)
   const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false)
+  
+  // Batch Email Dispatch State
+  const [isBatchEmailing, setIsBatchEmailing] = useState<boolean>(false)
+  const [batchEmailProgress, setBatchEmailProgress] = useState<{ total: number; current: number } | null>(null)
 
   // Email Template Customization State
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false)
@@ -254,15 +262,30 @@ export default function InterviewsAndEmailsPage() {
     return groups
   }, [applications])
 
+  const schedulableRoleGroups = useMemo(() => {
+    const groups: { [roleTitle: string]: Application[] } = {}
+    Object.keys(roleGroups).forEach(role => {
+      groups[role] = roleGroups[role].filter(a => a.status === 'SHORTLISTED' || a.status === 'INTERVIEW')
+    })
+    return groups
+  }, [roleGroups])
+
   const uniqueRoleTitles = useMemo(() => {
     return Object.keys(roleGroups)
   }, [roleGroups])
 
-  // Filtered applications based on selected role
+  // Filtered applications based on selected role and status
   const displayedApplications = useMemo(() => {
-    if (selectedRoleTitle === 'ALL') return applications
-    return roleGroups[selectedRoleTitle] || []
-  }, [applications, roleGroups, selectedRoleTitle])
+    let filtered = applications.filter(app => app.emailDraft?.status !== 'SENT');
+    
+    if (selectedRoleTitle !== 'ALL') {
+      filtered = filtered.filter(app => (app.job?.title || 'Unassigned Role') === selectedRoleTitle);
+    }
+    if (selectedStatusFilter !== 'ALL') {
+      filtered = filtered.filter(app => app.status === selectedStatusFilter);
+    }
+    return filtered;
+  }, [applications, selectedRoleTitle, selectedStatusFilter])
 
   // Map application IDs to scheduled interviews
   const interviewMapByAppId = useMemo(() => {
@@ -283,9 +306,9 @@ export default function InterviewsAndEmailsPage() {
       return
     }
 
-    const appsInRole = roleGroups[batchRoleTitle] || []
+    const appsInRole = schedulableRoleGroups[batchRoleTitle] || []
     if (appsInRole.length === 0) {
-      setError(`No candidates found for role "${batchRoleTitle}"`)
+      setError(`No valid candidates found for role "${batchRoleTitle}". Candidates must be in SHORTLISTED or INTERVIEW status to be scheduled.`)
       return
     }
 
@@ -408,11 +431,74 @@ export default function InterviewsAndEmailsPage() {
         throw new Error(errData?.error || 'Failed to send email');
       }
       
+      await fetchData();
       setSuccessMsg('✅ Email sent successfully to candidate!');
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Failed to send email');
+    }
+  }
+
+  // 4. Batch Send Emails
+  const handleBatchSendEmails = async (targetStatus: string, templateSubject: string, templateBody: string) => {
+    const appsToEmail = applications.filter(a => a.status === targetStatus && a.candidate?.email && a.emailDraft?.status !== 'SENT')
+    
+    if (appsToEmail.length === 0) {
+      setError(`No candidates found with status ${targetStatus} to email.`)
+      return
+    }
+
+    if (!confirm(`Are you sure you want to batch send emails to ${appsToEmail.length} candidates?`)) return
+
+    setIsBatchEmailing(true)
+    setBatchEmailProgress({ total: appsToEmail.length, current: 0 })
+    setError(null)
+    setSuccessMsg(null)
+
+    try {
+      const token = await getToken()
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      let successCount = 0
+
+      for (let i = 0; i < appsToEmail.length; i++) {
+        const app = appsToEmail[i]
+        const candidateName = `${app.candidate?.firstName || ''} ${app.candidate?.lastName || ''}`.trim()
+        const jobTitle = app.job?.title || 'the position'
+        
+        const finalSubject = templateSubject
+          .replace(/{candidate_name}/g, candidateName)
+          .replace(/{job_title}/g, jobTitle)
+          .replace(/{company_name}/g, 'Our Company')
+
+        const finalBody = templateBody
+          .replace(/{candidate_name}/g, candidateName)
+          .replace(/{job_title}/g, jobTitle)
+          .replace(/{company_name}/g, 'Our Company')
+          .replace(/{interview_date}/g, 'TBD')
+          .replace(/{interview_time}/g, 'TBD')
+
+        const res = await fetch(`${baseUrl}/applications/${app.id}/email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ subject: finalSubject, body: finalBody })
+        })
+
+        if (res.ok) successCount++
+        setBatchEmailProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null)
+      }
+
+      await fetchData();
+      setSuccessMsg(`✅ Batch complete! Successfully sent ${successCount} out of ${appsToEmail.length} emails.`)
+    } catch (err) {
+      console.error(err)
+      setError('An error occurred during batch emailing.')
+    } finally {
+      setIsBatchEmailing(false)
+      setTimeout(() => setBatchEmailProgress(null), 3000)
     }
   }
 
@@ -448,7 +534,7 @@ export default function InterviewsAndEmailsPage() {
       const interviewDate = inv?.scheduledAt 
         ? new Date(inv.scheduledAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })
         : 'To be scheduled'
-      const meetingLink = inv?.meetingLink || 'https://meet.google.com/interview-link'
+      const meetingLink = inv?.meetingLink || 'https://meet.jit.si/interview-link'
 
       const templateMap = {
         acceptance: { body: acceptanceBodyTemplate, subject: acceptanceSubjectTemplate, apiType: 'interview_invite' },
@@ -545,20 +631,41 @@ export default function InterviewsAndEmailsPage() {
             <h2 className="text-xl font-bold text-gray-900">1. Grouped Candidate Applications by Role</h2>
             <p className="text-xs text-gray-500">Filter and manage candidates applying for the same role.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">Filter Role:</label>
-            <select
-              className="border rounded-lg px-3 py-1.5 text-sm bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-indigo-500"
-              value={selectedRoleTitle}
-              onChange={(e) => setSelectedRoleTitle(e.target.value)}
-            >
-              <option value="ALL">All Roles ({applications.length})</option>
-              {uniqueRoleTitles.map(role => (
-                <option key={role} value={role}>
-                  {role} ({roleGroups[role].length})
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-gray-600">Filter Role:</label>
+              <select
+                className="border rounded-lg px-3 py-1.5 text-sm bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-indigo-500"
+                value={selectedRoleTitle}
+                onChange={(e) => setSelectedRoleTitle(e.target.value)}
+              >
+                <option value="ALL">All Roles</option>
+                {uniqueRoleTitles.map(role => (
+                  <option key={role} value={role}>
+                    {role} ({roleGroups[role].length})
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-gray-600">Status:</label>
+              <select
+                className="border rounded-lg px-3 py-1.5 text-sm bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-indigo-500"
+                value={selectedStatusFilter}
+                onChange={(e) => setSelectedStatusFilter(e.target.value)}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="APPLIED">Applied</option>
+                <option value="SCREENING">Screening</option>
+                <option value="PENDING_REVIEW">Pending Review</option>
+                <option value="SHORTLISTED">Shortlisted</option>
+                <option value="INTERVIEW">Interview</option>
+                <option value="OFFERED">Offered</option>
+                <option value="HIRED">Hired</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -707,7 +814,7 @@ export default function InterviewsAndEmailsPage() {
                 <option value="" disabled>Select Job Role (e.g., MLE Intern)...</option>
                 {uniqueRoleTitles.map(role => (
                   <option key={role} value={role}>
-                    {role} ({roleGroups[role].length} candidates)
+                    {role} ({schedulableRoleGroups[role]?.length || 0} candidates)
                   </option>
                 ))}
               </select>
@@ -777,7 +884,7 @@ export default function InterviewsAndEmailsPage() {
                 className="w-full border rounded-xl p-2.5 text-sm"
                 value={batchMeetingLink}
                 onChange={(e) => setBatchMeetingLink(e.target.value)}
-                placeholder="https://meet.google.com/..."
+                placeholder="https://meet.jit.si/..."
               />
             </div>
 
@@ -788,7 +895,7 @@ export default function InterviewsAndEmailsPage() {
             >
               {isBatchScheduling
                 ? 'Scheduling Role Candidates...'
-                : `📅 Batch Schedule ${batchRoleTitle ? `(${roleGroups[batchRoleTitle]?.length || 0} Candidates)` : ''}`}
+                : `📅 Batch Schedule ${batchRoleTitle ? `(${schedulableRoleGroups[batchRoleTitle]?.length || 0} Candidates)` : ''}`}
             </button>
           </form>
         </div>
@@ -929,6 +1036,58 @@ export default function InterviewsAndEmailsPage() {
         </div>
       </div>
 
+      {/* Section 4: Batch Dispatch Emails */}
+      <div className="bg-white border rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">4. Batch Dispatch Emails</h2>
+            <p className="text-xs text-gray-500">Automatically generate and blast out emails to all candidates sharing a specific status.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border border-rose-200 bg-rose-50 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-rose-900 mb-1">Batch Send Rejections</h3>
+              <p className="text-xs text-rose-700 mb-4">Uses the <b>Post-Interview Rejection</b> template to automatically email every single candidate currently marked as <b>REJECTED</b>.</p>
+            </div>
+            <button
+              onClick={() => handleBatchSendEmails('REJECTED', postRejectionSubjectTemplate, postRejectionBodyTemplate)}
+              disabled={isBatchEmailing}
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition disabled:opacity-50"
+            >
+              {isBatchEmailing ? 'Dispatching...' : '🔴 Batch Send to All Rejects'}
+            </button>
+          </div>
+
+          <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-emerald-900 mb-1">Batch Send Offers</h3>
+              <p className="text-xs text-emerald-700 mb-4">Uses the <b>Offer Letter</b> template to automatically email every single candidate currently marked as <b>OFFERED</b>.</p>
+            </div>
+            <button
+              onClick={() => handleBatchSendEmails('OFFERED', offerSubjectTemplate, offerBodyTemplate)}
+              disabled={isBatchEmailing}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition disabled:opacity-50"
+            >
+              {isBatchEmailing ? 'Dispatching...' : '🟢 Batch Send to All Offered'}
+            </button>
+          </div>
+        </div>
+
+        {batchEmailProgress && (
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mt-4">
+            <div 
+              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" 
+              style={{ width: `${(batchEmailProgress.current / batchEmailProgress.total) * 100}%` }}
+            ></div>
+            <p className="text-xs text-center text-gray-500 mt-2">
+              Sent {batchEmailProgress.current} out of {batchEmailProgress.total} emails
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Edit Individual Interview Date Modal */}
       {editingInterview && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1001,7 +1160,7 @@ export default function InterviewsAndEmailsPage() {
                   className="w-full border rounded-xl p-2.5 text-sm"
                   value={editMeetingLink}
                   onChange={(e) => setEditMeetingLink(e.target.value)}
-                  placeholder="https://meet.google.com/..."
+                  placeholder="https://meet.jit.si/..."
                 />
               </div>
 

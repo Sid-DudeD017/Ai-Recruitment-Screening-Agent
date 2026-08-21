@@ -271,7 +271,12 @@ def generate_email_endpoint(request: EmailRequest):
             "summary": f"Applying for {request.jobTitle} at {request.companyName}. Context: {request.additionalContext or ''}"
         }
         
-        res = generate_email_node({"recruiter_decision": decision, "parsed_resume": parsed_resume, "interview_recommendation": None})
+        res = generate_email_node({
+            "recruiter_decision": decision, 
+            "parsed_resume": parsed_resume, 
+            "interview_recommendation": None,
+            "additional_context": request.additionalContext
+        })
         return res.get("email_draft", {})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -22,8 +22,10 @@ def generate_email_node(state: GraphState) -> dict:
         "Generate a professional recruitment email based on the following context.\n"
         "Recruiter Decision: {decision}\n"
         "Interview Recommendation Details (if any): {interview}\n"
-        "Candidate Profile:\n{candidate}\n\n"
+        "Candidate Profile:\n{candidate}\n"
+        "Context/Instructions: {context}\n\n"
         "If the decision is APPROVE, generate an interview invitation or shortlist notification.\n"
+        "CRITICAL: If the Context/Instructions specify a Meeting Link or Interview Date, you MUST use them EXACTLY as provided. Do not hallucinate Google Meet links or fake dates.\n"
         "If the decision is REJECT, generate a polite rejection email.\n"
         "Return the email type, subject, and body."
     )
@@ -33,7 +35,8 @@ def generate_email_node(state: GraphState) -> dict:
     result = chain.invoke({
         "decision": decision,
         "interview": json.dumps(interview_rec) if interview_rec else "None",
-        "candidate": json.dumps(state.get("parsed_resume", {}), indent=2)
+        "candidate": json.dumps(state.get("parsed_resume", {}), indent=2),
+        "context": state.get("additional_context", "None")
     })
     
     return {"email_draft": result.model_dump()}

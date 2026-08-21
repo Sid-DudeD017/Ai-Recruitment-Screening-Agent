@@ -8,9 +8,10 @@ import type {
 import { NotFoundError, AppError } from "@/shared/errors";
 import { buildPaginatedResult } from "@/shared/utils/pagination";
 import { applicationsRepository } from "@/modules/applications/applications.repository";
-import { googleCalendarService } from "@/infrastructure/calendar/google-calendar.service";
+import { jitsiService } from "@/infrastructure/calendar/jitsi.service";
 import { prisma } from "@/infrastructure/database/prisma.client";
 import { createModuleLogger } from "@/shared/utils/logger";
+import { nodemailerEmailService } from "@/infrastructure/email/nodemailer.adapter";
 
 const logger = createModuleLogger("interviews-service");
 
@@ -42,13 +43,20 @@ export const interviewsService = {
       );
     }
 
+    // Generate Jitsi meeting link if virtual BEFORE creating the interview
+    let meetingLink = input.meetingLink || null;
+    if (input.type === "VIDEO" && !meetingLink) {
+      const candidateName = `${application.candidate.firstName}${application.candidate.lastName}`;
+      meetingLink = jitsiService.generateMeetingLink(candidateName, application.job.title);
+    }
+
     const interview = await interviewsRepository.create({
       application: { connect: { id: input.applicationId } },
       scheduledAt: input.scheduledAt,
       durationMinutes: input.durationMinutes,
       type: input.type,
       location: input.location,
-      meetingLink: input.meetingLink || null,
+      meetingLink: meetingLink,
       interviewerIds: input.interviewerIds,
       notes: input.notes,
     });
@@ -61,36 +69,26 @@ export const interviewsService = {
       );
     }
 
-    // Attempt to schedule via Google Calendar
-    const interviewers = await prisma.user.findMany({
-      where: { id: { in: input.interviewerIds }, companyId },
-      select: { email: true },
-    });
-    
-    const attendeeEmails = [
-      application.candidate.email,
-      ...interviewers.map((i) => i.email),
-    ];
-
-    const calendarResult = await googleCalendarService.createInterviewEvent(
-      clerkId,
-      {
-        title: `Interview: ${application.candidate.firstName} ${application.candidate.lastName} - ${application.job.title}`,
-        description: input.notes || "Job interview",
-        startTime: input.scheduledAt,
-        durationMinutes: input.durationMinutes,
-        attendeeEmails,
-        isVirtual: input.type === "VIDEO",
-        location: input.location,
+    // Send email to the candidate
+    if (meetingLink) {
+      const emailBody = `
+        <p>Dear ${application.candidate.firstName},</p>
+        <p>Your interview for the <strong>${application.job.title}</strong> position has been scheduled.</p>
+        <p><strong>Date & Time:</strong> ${new Date(input.scheduledAt).toLocaleString()}</p>
+        <p><strong>Meeting Link:</strong> <a href="${meetingLink}">${meetingLink}</a></p>
+        <p>Looking forward to speaking with you!</p>
+      `;
+      
+      try {
+        await nodemailerEmailService.send({
+          to: application.candidate.email,
+          subject: `Interview Scheduled: ${application.job.title}`,
+          html: emailBody
+        });
+        logger.info({ email: application.candidate.email }, "Interview email sent");
+      } catch (err) {
+        logger.error({ err }, "Failed to send interview email");
       }
-    );
-
-    // Update the interview with calendar details if successful
-    if (calendarResult.eventId || calendarResult.meetingLink) {
-      await interviewsRepository.update(interview.id, {
-        calendarEventId: calendarResult.eventId || undefined,
-        meetingLink: calendarResult.meetingLink || undefined,
-      });
     }
 
     logger.info(
@@ -222,10 +220,6 @@ export const interviewsService = {
     }
 
     await interviewsRepository.updateStatus(id, "CANCELLED");
-
-    if (existing.calendarEventId) {
-      await googleCalendarService.cancelInterviewEvent(clerkId, existing.calendarEventId);
-    }
 
     logger.info({ interviewId: id }, "Interview cancelled");
   },

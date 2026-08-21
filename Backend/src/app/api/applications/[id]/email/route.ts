@@ -43,6 +43,22 @@ export async function POST(
       html: body,
     });
 
+    // Save the sent email in the database so we know it was sent
+    await prisma.emailDraft.upsert({
+      where: { applicationId: application.id },
+      create: {
+        applicationId: application.id,
+        subject,
+        body,
+        status: 'SENT'
+      },
+      update: {
+        subject,
+        body,
+        status: 'SENT'
+      }
+    });
+
     return NextResponse.json({ success: true, message: "Email sent successfully." });
   } catch (error: any) {
     console.error("Failed to send email:", error);
