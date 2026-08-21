@@ -14,6 +14,7 @@ export default function Navbar() {
     { name: 'Candidates', href: '/candidates' },
     { name: 'Pipeline', href: '/applications' },
     { name: 'Interviews & Email', href: '/interviews' },
+    { name: 'Tutorial', href: '/tutorial' },
   ]
 
   return (
