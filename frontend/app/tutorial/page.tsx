@@ -37,16 +37,6 @@ export default function TutorialPage() {
         </p>
       </div>
 
-      {/* Access Information Alert */}
-      <div style={{ ...S.card, borderLeft: '4px solid #a855f7', backgroundColor: '#211830' }}>
-        <h2 style={{ color: '#e9d5ff', fontWeight: 700, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          How to Access This Tutorial Again
-        </h2>
-        <p style={{ color: '#cbd5e1', marginTop: '8px', fontSize: '14px', lineHeight: '1.6' }}>
-          This guide is permanently available for reference. You can return to this tutorial page at any time by clicking the <strong>Tutorial</strong> tab in the main navigation bar, or by typing the path <code>/tutorial</code> directly in the browser address bar.
-        </p>
-      </div>
-
       {/* Usage Guide */}
       <div>
         <h2 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.5rem', marginBottom: '16px' }} className="flex items-center gap-2">
