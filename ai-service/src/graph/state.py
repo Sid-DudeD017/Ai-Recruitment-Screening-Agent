@@ -19,6 +19,7 @@ class GraphState(TypedDict, total=False):
     # Results
     match_result: Optional[Dict[str, Any]]
     bias_result: Optional[Dict[str, Any]]
+    bias_feedback: Optional[str]
     candidate_evaluation: Optional[Dict[str, Any]]
     ranking_result: Optional[List[Dict[str, Any]]]
     

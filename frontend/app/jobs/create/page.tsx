@@ -38,7 +38,7 @@ export default function CreateJobPage() {
         salaryMax: formData.salaryMax ? parseInt(formData.salaryMax, 10) : undefined,
       }
       
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
       const res = await fetch(`${baseUrl}/jobs`, {
         method: 'POST',
         headers: {

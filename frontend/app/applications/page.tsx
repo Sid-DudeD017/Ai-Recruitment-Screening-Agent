@@ -58,7 +58,7 @@ export default function ApplicationsPage() {
       try {
         const token = await getToken()
         if (!token) return
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
         const res = await fetch(`${baseUrl}/jobs`, { headers: { 'Authorization': `Bearer ${token}` } })
         if (res.ok) {
           const json = await res.json()
@@ -77,7 +77,7 @@ export default function ApplicationsPage() {
         setLoadingApps(true)
         const token = await getToken()
         if (!token) return
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
         const res = await fetch(`${baseUrl}/applications?jobId=${activeJobId}`, { headers: { 'Authorization': `Bearer ${token}` } })
         if (!res.ok) throw new Error('Failed to fetch applications')
         const json = await res.json()
@@ -113,7 +113,7 @@ export default function ApplicationsPage() {
     setBatchProgress({ total: appsToProcess.length, current: 0 })
     setError(null)
     const token = await getToken()
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
     let currentProcessed = 0
     let rejectedCount = 0
     
@@ -180,23 +180,48 @@ export default function ApplicationsPage() {
     }
   }
 
-  const handleApproveAndSend = () => {
+  const handleApproveAndSend = async () => {
     if (!reviewingApp) return
-    setApplications(prev => prev.map(app => app.id === reviewingApp.id ? { ...app, status: 'INTERVIEW' } : app))
-    setReviewingApp(null)
-    alert('Email Sent successfully!')
+    try {
+      const token = await getToken();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const res = await fetch(`${baseUrl}/applications/${reviewingApp.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'INTERVIEW', emailBody: editedEmail })
+      });
+      if (res.ok) {
+        setApplications(prev => prev.map(app => app.id === reviewingApp.id ? { ...app, status: 'INTERVIEW' } : app))
+        setReviewingApp(null)
+        alert('Email Sent successfully!')
+      } else {
+        alert('Failed to send email. Check backend logs.');
+      }
+    } catch(err) { console.error(err); }
   }
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!reviewingApp) return
-    setApplications(prev => prev.map(app => app.id === reviewingApp.id ? { ...app, status: 'REJECTED' } : app))
-    setReviewingApp(null)
+    try {
+      const token = await getToken();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const res = await fetch(`${baseUrl}/applications/${reviewingApp.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'REJECTED', emailBody: editedEmail })
+      });
+      if (res.ok) {
+        setApplications(prev => prev.map(app => app.id === reviewingApp.id ? { ...app, status: 'REJECTED' } : app))
+        setReviewingApp(null)
+        alert('Rejection Email Sent successfully!')
+      }
+    } catch(err) { console.error(err); }
   }
 
   const handleForceMove = async (appId: string) => {
     try {
       const token = await getToken();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
       const res = await fetch(`${baseUrl}/applications/${appId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -224,7 +249,7 @@ export default function ApplicationsPage() {
     setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: targetStatus } : a))
     try {
       const token = await getToken()
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
       const res = await fetch(`${baseUrl}/applications/${appId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

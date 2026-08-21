@@ -36,6 +36,12 @@ export interface ApplicationWithRelations extends ApplicationDto {
   }>;
 }
 
+export interface UpdateApplicationStatusInput {
+  status: string;
+  notes?: string;
+  emailBody?: string;
+}
+
 export interface ApplicationListFilters {
   companyId: string;
   jobId?: string;

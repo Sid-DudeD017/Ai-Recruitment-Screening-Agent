@@ -14,13 +14,20 @@ def match_candidate_node(state: GraphState) -> dict:
     llm = get_llm()
     structured_llm = llm.with_structured_output(MatchResult)
     
+    bias_feedback = state.get("bias_feedback", "")
+    bias_instruction = (
+        f"\n\nIMPORTANT - PREVIOUS BIAS FEEDBACK:\n{bias_feedback}\n"
+        "You MUST adjust your scoring and reasoning to completely eliminate these biases. "
+        "Do not penalize the candidate for reasons flagged as biased."
+    ) if bias_feedback else ""
+    
     prompt = PromptTemplate.from_template(
         "You are an expert technical recruiter AI. Grade the candidate strictly out of 100 "
         "on the given categories based ONLY on the provided candidate profile and job requirements.\n\n"
         "Job Requirements:\n{job_reqs}\n\n"
         "Candidate Profile:\n{candidate_profile}\n\n"
         "Provide your scores, identify strengths, missing requirements, and write a brief explanation. "
-        "Ensure the explanation is grounded in the supplied data."
+        "Ensure the explanation is grounded in the supplied data." + bias_instruction
     )
     
     chain = prompt | structured_llm
@@ -34,4 +41,5 @@ def match_candidate_node(state: GraphState) -> dict:
         "candidate_profile": candidate_profile
     })
     
-    return {"match_result": result.model_dump()}
+    # Return bias_feedback as None to clear it after using it (optional, but clean)
+    return {"match_result": result.model_dump(), "bias_feedback": None}

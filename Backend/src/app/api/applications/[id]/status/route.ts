@@ -14,7 +14,8 @@ const updateStatusSchema = z.object({
     "HIRED",
     "REJECTED"
   ]),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  emailBody: z.string().optional()
 });
 
 /**
@@ -30,7 +31,7 @@ export const PATCH = routeHandler(
       params.id,
       data.status,
       auth.companyId,
-      { notes: data.notes }
+      { notes: data.notes, emailBody: data.emailBody }
     );
 
     return successResponse(updated);

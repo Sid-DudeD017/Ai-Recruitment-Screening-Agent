@@ -29,7 +29,7 @@ export default function JobsPage() {
         setLoading(true)
         const token = await getToken()
         if (!token) { setError('Authentication required'); return }
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
         const res = await fetch(`${baseUrl}/jobs`, { headers: { 'Authorization': `Bearer ${token}` } })
         if (!res.ok) throw new Error('Failed to fetch jobs')
         const json = await res.json()

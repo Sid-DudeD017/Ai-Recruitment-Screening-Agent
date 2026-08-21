@@ -64,7 +64,7 @@ export default function CandidatesPage() {
         const token = await getToken()
         if (!token) return
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
         const [candidatesRes, jobsRes] = await Promise.all([
           fetch(`${baseUrl}/candidates`, { headers: { 'Authorization': `Bearer ${token}` } }),
           fetch(`${baseUrl}/jobs`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -97,7 +97,7 @@ export default function CandidatesPage() {
         const token = await getToken();
         if (!token) return;
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
         const res = await fetch(`${baseUrl}/candidates/parsing-jobs`, { headers: { 'Authorization': `Bearer ${token}` } });
         
         if (res.ok) {
@@ -182,7 +182,7 @@ export default function CandidatesPage() {
     setSuccessMsg(null)
     setUploadProgress({ total: filesToUpload.length, current: 0, currentFileName: '' })
     
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
     
     // Create parsing jobs upfront so they appear in history immediately
     let precreatedJobs: any[] = [];
@@ -286,7 +286,7 @@ export default function CandidatesPage() {
       const token = await getToken();
       if (!token) throw new Error("Authentication required");
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/applications`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/applications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

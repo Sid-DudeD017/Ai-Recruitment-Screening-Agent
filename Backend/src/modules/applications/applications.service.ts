@@ -11,6 +11,7 @@ import { buildPaginatedResult } from "@/shared/utils/pagination";
 import { cacheService } from "@/infrastructure/cache/cache.service";
 import { CacheKeys } from "@/infrastructure/cache/cache.keys";
 import { createModuleLogger } from "@/shared/utils/logger";
+import { nodemailerEmailService } from "@/infrastructure/email/nodemailer.adapter";
 
 const logger = createModuleLogger("applications-service");
 
@@ -178,6 +179,16 @@ export const applicationsService = {
       },
       "Application status transitioned"
     );
+
+    // Send email if provided
+    if (input?.emailBody && updated.candidate?.email) {
+      const subject = targetStatus === 'INTERVIEW' ? 'Interview Invitation' : targetStatus === 'REJECTED' ? 'Update on your application' : 'Application Update';
+      await nodemailerEmailService.sendEmail({
+        to: updated.candidate.email,
+        subject: subject,
+        html: input.emailBody,
+      });
+    }
 
     return updated;
   },

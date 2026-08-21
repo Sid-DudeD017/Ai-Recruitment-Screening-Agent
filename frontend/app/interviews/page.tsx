@@ -210,7 +210,7 @@ export default function InterviewsAndEmailsPage() {
       const token = await getToken()
       if (!token) return
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
       
       // Fetch applications
       const appsRes = await fetch(`${baseUrl}/applications`, {
@@ -295,7 +295,7 @@ export default function InterviewsAndEmailsPage() {
 
     try {
       const token = await getToken()
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
 
       const appIds = appsInRole.map(a => a.id)
 
@@ -353,7 +353,7 @@ export default function InterviewsAndEmailsPage() {
 
     try {
       const token = await getToken()
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
 
       const payload = {
         scheduledAt: new Date(editScheduledAt).toISOString(),
@@ -388,6 +388,34 @@ export default function InterviewsAndEmailsPage() {
     }
   }
 
+  const handleSendEmail = async () => {
+    if (!selectedAppIdForEmail) return;
+    try {
+      setSuccessMsg('Sending email...');
+      const token = await getToken();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const res = await fetch(`${baseUrl}/applications/${selectedAppIdForEmail}/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ subject: emailSubject, body: emailBody })
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to send email');
+      }
+      
+      setSuccessMsg('✅ Email sent successfully to candidate!');
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Failed to send email');
+    }
+  }
+
   // 3. Draft Email — auto-detects the right template based on candidate status
   const handleDraftEmail = async (explicitType?: 'acceptance' | 'rejection' | 'offer' | 'post_rejection') => {
     if (!selectedAppIdForEmail) {
@@ -412,7 +440,7 @@ export default function InterviewsAndEmailsPage() {
 
     try {
       const token = await getToken()
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
 
       const candidateName = `${app.candidate?.firstName || ''} ${app.candidate?.lastName || ''}`.trim() || 'Candidate'
       const jobTitle = app.job?.title || 'Position'
@@ -876,7 +904,7 @@ export default function InterviewsAndEmailsPage() {
             </div>
 
             {emailBody && (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -887,6 +915,13 @@ export default function InterviewsAndEmailsPage() {
                   className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1.5 rounded-lg border transition"
                 >
                   📋 Copy to Clipboard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-lg shadow transition"
+                >
+                  🚀 Send Email
                 </button>
               </div>
             )}

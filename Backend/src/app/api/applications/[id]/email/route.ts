@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
-import { resendEmailService } from "@/infrastructure/email/resend.adapter";
+import { nodemailerEmailService } from "@/infrastructure/email/nodemailer.adapter";
 import { prisma } from "@/infrastructure/database/prisma.client";
 
 export async function POST(
@@ -37,8 +37,8 @@ export async function POST(
 
     const candidateEmail = application.candidate.email;
 
-    await resendEmailService.send({
-      to: "vanshtibrewal2005@gmail.com", // Overridden for Resend free tier
+    await nodemailerEmailService.sendEmail({
+      to: candidateEmail,
       subject: subject,
       html: body,
     });

@@ -62,8 +62,19 @@ def orchestrate(state: GraphState) -> dict:
             "decision_reason": "Match result exists, proceeding to bias detection."
         }
         
+    # Rule 4.5: Bias Correction Loop
+    if match_result and bias_result and bias_result.get("hasBias") == True:
+        logger.warning("Agent: Bias detected! Looping back to matcher.")
+        issues = bias_result.get("issues", [])
+        return {
+            "next_action": "match_candidate",
+            "decision_reason": "Bias detected! Routing back to matcher to correct bias.",
+            "bias_result": None,
+            "bias_feedback": f"Please fix these bias issues: {issues}"
+        }
+        
     # Rule 5: Candidate Evaluation
-    if match_result and bias_result and not evaluation:
+    if match_result and bias_result and bias_result.get("hasBias") == False and not evaluation:
         return {
             "next_action": "evaluate_candidate",
             "decision_reason": "Match and bias results exist, generating final evaluation."

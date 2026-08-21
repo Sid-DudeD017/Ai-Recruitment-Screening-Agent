@@ -47,7 +47,7 @@ export default function Dashboard() {
         const headers = {
           'Authorization': `Bearer ${token}`
         }
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
 
         const [statsRes, pipelineRes, activitiesRes] = await Promise.all([
           fetch(`${baseUrl}/dashboard/stats`, { headers }),
