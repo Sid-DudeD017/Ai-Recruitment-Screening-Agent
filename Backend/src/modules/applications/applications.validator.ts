@@ -13,6 +13,7 @@ export const createApplicationSchema = z.object({
 export const updateApplicationStatusSchema = z.object({
   notes: z.string().optional(),
   reason: z.string().optional(), // For rejection reason
+  emailBody: z.string().optional(),
 });
 
 export const applicationFilterSchema = z.object({

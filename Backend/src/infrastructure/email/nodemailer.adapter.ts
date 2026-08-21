@@ -11,10 +11,10 @@ const transporter = nodemailer.createTransport({
 });
 
 export const nodemailerEmailService: EmailService = {
-  async sendEmail({ to, subject, html, from }: { to: string; subject: string; html: string; from?: string }) {
+  async send({ to, subject, html, from }: { to: string; subject: string; html: string; from?: string }) {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.warn("EMAIL_USER or EMAIL_PASS not configured — emails will not be sent");
-      return;
+      return { id: "" };
     }
 
     try {
@@ -28,8 +28,10 @@ export const nodemailerEmailService: EmailService = {
       });
 
       console.log(`[NodeMailer] Message sent successfully to ${to}: %s`, info.messageId);
-    } catch (error) {
+      return { id: info.messageId };
+    } catch (error: any) {
       console.error("[NodeMailer] Error sending email:", error);
+      return { id: "" };
     }
   }
 };

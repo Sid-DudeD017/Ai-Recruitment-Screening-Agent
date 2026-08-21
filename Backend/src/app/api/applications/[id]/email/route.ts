@@ -37,7 +37,7 @@ export async function POST(
 
     const candidateEmail = application.candidate.email;
 
-    await nodemailerEmailService.sendEmail({
+    await nodemailerEmailService.send({
       to: candidateEmail,
       subject: subject,
       html: body,

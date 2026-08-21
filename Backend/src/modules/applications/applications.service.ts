@@ -183,7 +183,7 @@ export const applicationsService = {
     // Send email if provided
     if (input?.emailBody && updated.candidate?.email) {
       const subject = targetStatus === 'INTERVIEW' ? 'Interview Invitation' : targetStatus === 'REJECTED' ? 'Update on your application' : 'Application Update';
-      await nodemailerEmailService.sendEmail({
+      await nodemailerEmailService.send({
         to: updated.candidate.email,
         subject: subject,
         html: input.emailBody,
