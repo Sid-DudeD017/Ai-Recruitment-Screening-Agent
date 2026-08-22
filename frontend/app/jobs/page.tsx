@@ -12,9 +12,9 @@ interface Job {
   type: string
 }
 
-const cardStyle: React.CSSProperties = { backgroundColor: '#151c2c', border: '1px solid #2a364f', borderRadius: '12px', overflow: 'hidden' }
-const theadStyle: React.CSSProperties = { backgroundColor: '#1e293b', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }
-const trStyle: React.CSSProperties = { borderBottom: '1px solid #2a364f' }
+const cardStyle: React.CSSProperties = { backgroundColor: 'var(--card)', border: '1px solid var(--card-border)', borderRadius: '12px', overflow: 'hidden' }
+const theadStyle: React.CSSProperties = { backgroundColor: 'var(--card)', color: 'var(--muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid var(--card-border)' }
+const trStyle: React.CSSProperties = { borderBottom: '1px solid var(--card-border)' }
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -45,8 +45,8 @@ export default function JobsPage() {
   }, [getToken])
 
   const getStatusStyle = (status: string): React.CSSProperties => {
-    if (status === 'OPEN') return { backgroundColor: '#052e16', color: '#86efac', border: '1px solid #16a34a', borderRadius: '9999px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }
-    return { backgroundColor: '#1e293b', color: '#94a3b8', border: '1px solid #475569', borderRadius: '9999px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }
+    if (status === 'OPEN') return { backgroundColor: 'var(--color-emerald-bg)', color: 'var(--color-emerald-text)', border: '1px solid var(--color-emerald-border)', borderRadius: '9999px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }
+    return { backgroundColor: 'var(--card-border)', color: 'var(--muted)', border: '1px solid var(--card-border)', borderRadius: '9999px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }
   }
 
   const getTypeStyle = (): React.CSSProperties => ({
@@ -57,8 +57,8 @@ export default function JobsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.875rem' }}>Jobs Management</h1>
-          <p style={{ color: '#94a3b8', marginTop: '4px' }}>View and manage open positions.</p>
+          <h1 className="text-gray-900 font-extrabold text-3xl">Jobs Management</h1>
+          <p className="text-gray-500 mt-1">View and manage open positions.</p>
         </div>
         <Link
           href="/jobs/create"
@@ -75,7 +75,7 @@ export default function JobsPage() {
       )}
 
       {loading ? (
-        <div style={{ height: '200px', backgroundColor: '#1e293b', borderRadius: '12px', animation: 'pulse 2s infinite' }} />
+        <div style={{ height: '200px', backgroundColor: 'var(--card-border)', borderRadius: '12px', animation: 'pulse 2s infinite' }} />
       ) : (
         <div style={cardStyle}>
           <table className="w-full text-left text-sm">
@@ -89,9 +89,9 @@ export default function JobsPage() {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} style={trStyle} className="transition hover:brightness-110">
-                  <td className="p-4" style={{ color: '#ffffff', fontWeight: 600 }}>{job.title}</td>
-                  <td className="p-4" style={{ color: '#cbd5e1' }}>{job.location || '-'}</td>
+                <tr key={job.id} style={trStyle} className="transition hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="p-4 font-semibold text-gray-900">{job.title}</td>
+                  <td className="p-4 text-gray-600">{job.location || '-'}</td>
                   <td className="p-4" style={getTypeStyle()}>{job.type}</td>
                   <td className="p-4">
                     <span style={getStatusStyle(job.status)}>{job.status}</span>
@@ -100,7 +100,7 @@ export default function JobsPage() {
               ))}
               {jobs.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ color: '#64748b', textAlign: 'center', padding: '32px' }}>
+                  <td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '32px' }}>
                     No jobs found.
                   </td>
                 </tr>

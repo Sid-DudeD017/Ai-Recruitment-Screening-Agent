@@ -704,9 +704,9 @@ export default function InterviewsAndEmailsPage() {
             No candidates found for this role filter.
           </div>
         ) : (
-          <div className="overflow-x-auto border border-slate-700 rounded-xl">
-            <table className="w-full text-left text-sm" style={{color: '#f8fafc'}}>
-              <thead style={{backgroundColor: '#1e293b', color: '#e2e8f0'}} className="font-semibold text-xs">
+          <div className="overflow-x-auto border rounded-xl">
+            <table className="w-full text-left text-sm">
+              <thead className="font-semibold text-xs">
                 <tr>
                   <th className="p-3">Candidate</th>
                   <th className="p-3">Role / Job</th>
@@ -715,17 +715,17 @@ export default function InterviewsAndEmailsPage() {
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody style={{color: '#f8fafc'}}>
+              <tbody>
                 {displayedApplications.map(app => {
                   const inv = interviewMapByAppId[app.id]
                   return (
-                    <tr key={app.id} style={{borderColor: '#334155'}} className="transition hover:brightness-110">
+                    <tr key={app.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800">
                       <td className="p-3 font-medium">
                         <div>
-                          <p style={{color: '#ffffff'}} className="font-bold">
+                          <p className="font-bold text-gray-900">
                             {app.candidate?.firstName} {app.candidate?.lastName}
                           </p>
-                          <p style={{color: '#94a3b8'}} className="text-xs">{app.candidate?.email}</p>
+                          <p className="text-xs text-gray-500">{app.candidate?.email}</p>
                         </div>
                       </td>
                       <td className="p-3">
@@ -945,7 +945,7 @@ export default function InterviewsAndEmailsPage() {
 
             {/* Action Buttons — 4 types across 2 rows */}
             <div className="space-y-2">
-              <p style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pre-Interview</p>
+              <p style={{ color: 'var(--muted)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pre-Interview</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -964,7 +964,7 @@ export default function InterviewsAndEmailsPage() {
                   {isGeneratingEmail ? 'Drafting...' : 'Pre-Interview Rejection'}
                 </button>
               </div>
-              <p style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '10px' }}>Post-Interview</p>
+              <p style={{ color: 'var(--muted)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '10px' }}>Post-Interview</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
