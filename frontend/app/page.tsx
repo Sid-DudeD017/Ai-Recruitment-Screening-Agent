@@ -4,12 +4,11 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 
 interface Stats {
-  totalJobs: number
-  openJobs: number
-  totalCandidates: number
-  applicationsThisMonth: number
-  upcomingInterviews: number
-  hiredThisMonth: number
+  jobs: { total: number; open: number; closed: number; draft: number };
+  candidates: { total: number };
+  applications: { total: number; thisMonth: number };
+  interviews: { upcoming: number };
+  hired: { thisMonth: number };
 }
 
 interface PipelineStage {
@@ -127,12 +126,12 @@ export default function Dashboard() {
 
       {/* 1. Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        <StatCard title="Total Jobs" value={stats?.totalJobs} subtitle={`${stats?.openJobs} open openings`} />
-        <StatCard title="Total Candidates" value={stats?.totalCandidates} subtitle="In talent pool" />
-        <StatCard title="Applications" value={stats?.applicationsThisMonth} subtitle="Received this month" />
-        <StatCard title="Upcoming Interviews" value={stats?.upcomingInterviews} subtitle="Scheduled" />
-        <StatCard title="Hired Candidates" value={stats?.hiredThisMonth} subtitle="Joined this month" />
-        <StatCard title="Active Openings" value={stats?.openJobs} subtitle="Ready for candidate screening" />
+        <StatCard title="Total Jobs" value={stats?.jobs?.total} subtitle={`${stats?.jobs?.open} open openings`} />
+        <StatCard title="Total Candidates" value={stats?.candidates?.total} subtitle="In talent pool" />
+        <StatCard title="Applications" value={stats?.applications?.thisMonth} subtitle="Received this month" />
+        <StatCard title="Upcoming Interviews" value={stats?.interviews?.upcoming} subtitle="Scheduled" />
+        <StatCard title="Hired Candidates" value={stats?.hired?.thisMonth} subtitle="Joined this month" />
+        <StatCard title="Active Openings" value={stats?.jobs?.open} subtitle="Ready for candidate screening" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
