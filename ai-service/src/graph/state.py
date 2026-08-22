@@ -17,6 +17,7 @@ class GraphState(TypedDict, total=False):
     parsed_resume: Optional[Dict[str, Any]]
     
     # Results
+    triage_result: Optional[Dict[str, Any]]
     match_result: Optional[Dict[str, Any]]
     bias_result: Optional[Dict[str, Any]]
     bias_feedback: Optional[str]

@@ -33,7 +33,22 @@ def orchestrate(state: GraphState) -> dict:
     recruiter_decision = state.get("recruiter_decision")
     interview_rec = state.get("interview_recommendation")
     email_draft = state.get("email_draft")
+    triage_result = state.get("triage_result")
     
+    # 0. Fast-track Rejects (Triage or Human)
+    if recruiter_decision == "REJECT":
+        if not email_draft:
+            return {
+                "next_action": "generate_email",
+                "decision_reason": "Candidate rejected, generating rejection email."
+            }
+        else:
+            return {
+                "next_action": "end",
+                "decision_reason": "Rejection email drafted. Workflow complete.",
+                "workflow_status": "COMPLETED"
+            }
+            
     # Rule 1: Parse Job
     if job_desc and not parsed_job:
         return {
@@ -41,11 +56,18 @@ def orchestrate(state: GraphState) -> dict:
             "decision_reason": "Job description exists but is not parsed yet."
         }
         
+    # Rule 1.5: Triage Resume
+    if resume_text and not triage_result:
+        return {
+            "next_action": "triage_resume",
+            "decision_reason": "Resume text exists, running heuristic triage."
+        }
+        
     # Rule 2: Parse Resume
-    if resume_text and not parsed_resume:
+    if resume_text and triage_result and triage_result.get("passed") and not parsed_resume:
         return {
             "next_action": "parse_resume",
-            "decision_reason": "Resume text exists but is not parsed yet."
+            "decision_reason": "Resume text passed triage but is not parsed yet."
         }
         
     # Rule 3: Match
@@ -102,19 +124,11 @@ def orchestrate(state: GraphState) -> dict:
                 "decision_reason": "Interview scheduled, generating approval email."
             }
             
-    # Rule 8: Post-Approval Routing (Rejects)
-    if recruiter_decision == "REJECT":
-        if not email_draft:
-            return {
-                "next_action": "generate_email",
-                "decision_reason": "Recruiter rejected, generating rejection email."
-            }
-            
-    # Rule 9: Completion
-    if email_draft or (recruiter_decision == "REJECT" and email_draft):
+    # Rule 8: Completion (Approval)
+    if email_draft:
         return {
             "next_action": "end",
-            "decision_reason": "All required tasks are completed.",
+            "decision_reason": "Workflow completed.",
             "workflow_status": "COMPLETED"
         }
         

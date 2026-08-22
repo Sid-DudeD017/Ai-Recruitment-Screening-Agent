@@ -9,6 +9,7 @@ from src.agents.bias_detector import detect_bias_node
 from src.agents.evaluator import evaluate_candidate_node
 from src.agents.interviewer import schedule_interview_node
 from src.agents.emailer import generate_email_node
+from src.agents.triage_agent import triage_resume_node
 
 def human_review_node(state: GraphState) -> dict:
     # This node acts as the interruption point.
@@ -39,6 +40,7 @@ def create_workflow():
     
     # Add Nodes
     workflow.add_node("orchestrator", orchestrate)
+    workflow.add_node("triage_resume", triage_resume_node)
     workflow.add_node("parse_resume", parse_resume_node)
     workflow.add_node("analyze_job", analyze_job_node)
     workflow.add_node("match_candidate", match_candidate_node)
@@ -55,6 +57,7 @@ def create_workflow():
         "orchestrator",
         orchestrator_router,
         {
+            "triage_resume": "triage_resume",
             "parse_resume": "parse_resume",
             "analyze_job": "analyze_job",
             "match_candidate": "match_candidate",
@@ -69,7 +72,7 @@ def create_workflow():
     
     # All spoke nodes return back to orchestrator
     for node in [
-        "parse_resume", "analyze_job", "match_candidate",
+        "triage_resume", "parse_resume", "analyze_job", "match_candidate",
         "detect_bias", "evaluate_candidate", "human_review",
         "schedule_interview", "generate_email"
     ]:

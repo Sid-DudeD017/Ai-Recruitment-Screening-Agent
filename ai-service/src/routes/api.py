@@ -138,6 +138,8 @@ class BiasRequest(BaseModel):
     jobDescription: str
     requirements: str
 
+from src.agents.triage_agent import triage_resume_node
+
 @router.post("/parse-resume")
 def parse_resume_endpoint(request: ParseResumeRequest):
     try:
@@ -151,8 +153,15 @@ def parse_resume_endpoint(request: ParseResumeRequest):
         for page in reader.pages:
             resume_text += page.extract_text() + "\n"
             
+        # Run Triage First
+        triage_res = triage_resume_node({"resume_text": resume_text})
+        if triage_res.get("recruiter_decision") == "REJECT":
+            raise HTTPException(status_code=400, detail=triage_res["triage_result"]["reason"])
+            
         res = parse_resume_node({"resume_text": resume_text, "candidate_metadata": {"fileName": request.fileName}})
         return res.get("parsed_resume", {})
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -172,6 +181,11 @@ def upload_and_parse_resume_endpoint(file: UploadFile = File(...)):
             reader = PdfReader(BytesIO(content))
             for page in reader.pages:
                 resume_text += page.extract_text() + "\n"
+
+        # Run Triage First
+        triage_res = triage_resume_node({"resume_text": resume_text})
+        if triage_res.get("recruiter_decision") == "REJECT":
+            raise HTTPException(status_code=400, detail=triage_res["triage_result"]["reason"])
 
         print("BEFORE parse_resume_node")
         res = parse_resume_node({"resume_text": resume_text, "candidate_metadata": {"fileName": file.filename}})
