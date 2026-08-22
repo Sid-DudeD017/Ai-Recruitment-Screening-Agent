@@ -16,6 +16,8 @@ import type {
   ScheduleInterviewAIResponse,
   CheckBiasRequest,
   CheckBiasResponse,
+  ChatRequest,
+  ChatResponse,
 } from "./ai.types";
 
 const logger = createModuleLogger("ai-client");
@@ -134,6 +136,11 @@ class AIClient {
       "/ai/check-bias",
       data
     );
+    return response.data;
+  }
+  
+  async chat(data: ChatRequest): Promise<ChatResponse> {
+    const response = await this.client.post<ChatResponse>("/ai/chat", data);
     return response.data;
   }
 }

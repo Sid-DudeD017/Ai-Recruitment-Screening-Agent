@@ -145,6 +145,10 @@ export const applicationsService = {
     }
 
     const currentStatus = application.status;
+    
+    if (currentStatus === targetStatus) {
+      return application;
+    }
 
     if (!isValidTransition(currentStatus, targetStatus)) {
       throw new AppError(

@@ -103,6 +103,13 @@ export default function ApplicationsPage() {
       } finally { setLoadingApps(false) }
     }
     fetchApplications()
+
+    const handleRefresh = () => {
+      fetchApplications()
+    }
+    
+    window.addEventListener('refresh-kanban', handleRefresh)
+    return () => window.removeEventListener('refresh-kanban', handleRefresh)
   }, [activeJobId, getToken])
 
   const handleAIAutoProcessAll = async () => {

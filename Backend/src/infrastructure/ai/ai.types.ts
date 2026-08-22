@@ -126,3 +126,18 @@ export interface CheckBiasResponse {
   }>;
   revisedDescription?: string;
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatRequest {
+  message: string;
+  history: ChatMessage[];
+  currentUrl?: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+}

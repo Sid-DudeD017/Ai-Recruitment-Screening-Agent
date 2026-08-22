@@ -6,7 +6,7 @@ import { dashboardService } from "@/modules/dashboard/dashboard.service";
  * GET /api/dashboard/activity
  */
 export const GET = routeHandler(
-  { allowedRoles: ["ADMIN", "RECRUITER"] },
+  { allowedRoles: ["ADMIN", "RECRUITER", "HIRING_MANAGER"] },
   async (_req, { auth }) => {
     const activity = await dashboardService.getActivity(auth.companyId);
     return successResponse(activity);

@@ -56,7 +56,7 @@ export default function Dashboard() {
         ])
 
         if (!statsRes.ok || !pipelineRes.ok || !activitiesRes.ok) {
-          throw new Error('Failed to fetch dashboard data')
+          throw new Error(`Failed to fetch dashboard data. Stats: ${statsRes.status}, Pipeline: ${pipelineRes.status}, Activities: ${activitiesRes.status}`)
         }
 
         const [statsData, pipelineData, activitiesData] = await Promise.all([
@@ -77,6 +77,13 @@ export default function Dashboard() {
     }
 
     fetchDashboardData()
+
+    const handleRefresh = () => {
+      fetchDashboardData()
+    }
+    
+    window.addEventListener('refresh-kanban', handleRefresh)
+    return () => window.removeEventListener('refresh-kanban', handleRefresh)
   }, [getToken])
 
   if (error) {

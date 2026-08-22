@@ -294,3 +294,14 @@ def generate_email_endpoint(request: EmailRequest):
         return res.get("email_draft", {})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+from src.agents.chatbot import get_chatbot_response
+from src.schemas.chat_schemas import ChatRequest
+
+@router.post("/chat")
+def chat_endpoint(request: ChatRequest):
+    try:
+        res = get_chatbot_response(request)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
