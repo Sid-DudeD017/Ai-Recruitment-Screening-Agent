@@ -63,7 +63,7 @@ export default function Navbar() {
                   : { color: 'var(--foreground)' }
                 }
                 className={`px-3.5 py-1.5 rounded-xl transition-all duration-150 ${
-                  !isActive ? 'hover:bg-slate-200 dark:hover:bg-slate-800' : ''
+                  !isActive ? 'hover-bg-dynamic' : ''
                 }`}
               >
                 {item.name}
@@ -77,7 +77,7 @@ export default function Navbar() {
         <button
           onClick={toggleTheme}
           style={{ border: '1px solid var(--card-border)', transition: 'background-color 0.15s' }}
-          className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center cursor-pointer"
+          className="p-2 rounded-xl hover-bg-dynamic text-slate-700 dark:text-slate-300 flex items-center justify-center cursor-pointer"
           aria-label="Toggle theme"
         >
           {theme === 'dark' ? (

@@ -250,3 +250,11 @@ html:not(.dark) .text-rose-400 {
   color: var(--color-red-text) !important;
 }
 
+/* Fix for manual dark mode toggle ignoring Tailwind's dark: variant */
+.hover-bg-dynamic:hover {
+  background-color: #f1f5f9 !important; /* Lightest grey (slate-100) */
+}
+.dark .hover-bg-dynamic:hover {
+  background-color: #1e293b !important; /* Dark slate (slate-800) */
+}
+

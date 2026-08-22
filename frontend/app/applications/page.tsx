@@ -95,7 +95,7 @@ export default function ApplicationsPage() {
               body: JSON.stringify({ status: 'PENDING_REVIEW' })
             })
             setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'PENDING_REVIEW' } : a))
-          } catch(e) {}
+          } catch (e) { }
         }
       } catch (err) {
         console.error(err)
@@ -107,7 +107,7 @@ export default function ApplicationsPage() {
     const handleRefresh = () => {
       fetchApplications()
     }
-    
+
     window.addEventListener('refresh-kanban', handleRefresh)
     return () => window.removeEventListener('refresh-kanban', handleRefresh)
   }, [activeJobId, getToken])
@@ -123,13 +123,13 @@ export default function ApplicationsPage() {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
     let currentProcessed = 0
     let rejectedCount = 0
-    
+
     for (const app of appsToProcess) {
       try {
         let score = app.matchScore;
         let aiAnalysis = app.aiAnalysis;
         let matchAnalysis = app.matchAnalysis;
-        
+
         // If it doesn't have a score yet, fetch from AI
         if (score == null) {
           const freshToken = await getToken()
@@ -155,7 +155,7 @@ export default function ApplicationsPage() {
         if (score != null) {
           const targetStatus = score > 75 ? 'PENDING_REVIEW' : (score >= 50 ? 'SCREENING' : 'REJECTED');
           if (targetStatus === 'REJECTED') rejectedCount++;
-          
+
           if (targetStatus !== app.status) {
             await fetch(`${baseUrl}/applications/${app.id}/status`, {
               method: 'PATCH',
@@ -168,10 +168,10 @@ export default function ApplicationsPage() {
       } catch (err) {
         setError(prev => prev ? `${prev} | App ${app.id}: Network Error` : `Network error on App ${app.id}`)
       }
-      
+
       currentProcessed++
       setBatchProgress(prev => prev ? { ...prev, current: currentProcessed } : null)
-      
+
       // Only wait if we actually made a network call to the AI to avoid hitting rate limits
       if (app.matchScore == null && currentProcessed < appsToProcess.length) {
         await new Promise(resolve => setTimeout(resolve, 4000))
@@ -179,7 +179,7 @@ export default function ApplicationsPage() {
     }
     setIsBatchScoring(false)
     setBatchProgress(null)
-    
+
     if (rejectedCount > 0) {
       alert(`Batch processing complete. ${rejectedCount} candidates were below the threshold and have been automatically rejected and sent rejection emails.`)
     } else if (currentProcessed > 0 && !error) {
@@ -204,7 +204,7 @@ export default function ApplicationsPage() {
       } else {
         alert('Failed to send email. Check backend logs.');
       }
-    } catch(err) { console.error(err); }
+    } catch (err) { console.error(err); }
   }
 
   const handleReject = async () => {
@@ -222,7 +222,7 @@ export default function ApplicationsPage() {
         setReviewingApp(null)
         alert('Rejection Email Sent successfully!')
       }
-    } catch(err) { console.error(err); }
+    } catch (err) { console.error(err); }
   }
 
   const handleForceMove = async (appId: string) => {
@@ -239,7 +239,7 @@ export default function ApplicationsPage() {
       } else {
         alert('Failed to move candidate. Check backend status transition rules.');
       }
-    } catch(err) {
+    } catch (err) {
       console.error(err);
     }
   }
@@ -286,14 +286,14 @@ export default function ApplicationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.875rem' }}>Application Pipeline</h1>
-          <p style={{ color: '#94a3b8', marginTop: '4px' }}>Autonomous processing and Human-in-the-loop review.</p>
+          <h1 style={{ color: 'var(--foreground)', fontWeight: 800, fontSize: '1.875rem' }}>Application Pipeline</h1>
+          <p style={{ color: 'var(--muted)', marginTop: '4px' }}>Autonomous processing and Human-in-the-loop review.</p>
         </div>
         <div className="flex items-center gap-4">
           <select
             value={activeJobId}
             onChange={e => setActiveJobId(e.target.value)}
-            style={{ backgroundColor: '#1e293b', color: '#ffffff', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px', fontSize: '14px' }}
+            style={{ backgroundColor: 'var(--input-bg)', color: 'var(--foreground)', border: '1px solid var(--input-border)', borderRadius: '8px', padding: '8px 12px', fontSize: '14px' }}
           >
             <option value="" disabled>Select a job</option>
             {jobs.map(j => (
@@ -330,26 +330,26 @@ export default function ApplicationsPage() {
       )}
 
       {loadingApps ? (
-        <div style={{ color: '#64748b', textAlign: 'center', padding: '48px' }} className="animate-pulse">Loading applications...</div>
+        <div style={{ color: 'var(--muted)', textAlign: 'center', padding: '48px' }} className="animate-pulse">Loading applications...</div>
       ) : (
         <>
           {/* AI-Controlled Zone */}
           <div style={S.card}>
-            <div style={{ backgroundColor: '#1e293b', borderBottom: '1px solid #2a364f', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ borderBottom: '1px solid var(--card-border)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h2 style={{ color: '#ffffff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'inline-block' }} />
+                <h2 style={{ color: 'var(--foreground)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent)', display: 'inline-block' }} />
                   AI-Controlled Zone (Ingestion Volume)
                 </h2>
-                <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>Raw candidates awaiting autonomous scoring. Threshold: &gt; 75% match.</p>
+                <p style={{ color: 'var(--muted)', fontSize: '12px', marginTop: '4px' }}>Raw candidates awaiting autonomous scoring. Threshold: &gt; 75% match.</p>
               </div>
-              <span style={{ backgroundColor: '#334155', color: '#e2e8f0', fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: '9999px' }}>
+              <span style={{ backgroundColor: 'var(--muted)', color: 'var(--card)', fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: '9999px' }}>
                 {ingestionApps.length} Total • {remainingToProcessCount} Unscored
               </span>
             </div>
 
             {ingestionApps.length === 0 ? (
-              <div style={{ color: '#475569', textAlign: 'center', padding: '32px', fontSize: '14px' }}>No raw candidates in the ingestion pipeline.</div>
+              <div style={{ color: 'var(--muted)', textAlign: 'center', padding: '32px', fontSize: '14px' }}>No raw candidates in the ingestion pipeline.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -362,16 +362,16 @@ export default function ApplicationsPage() {
                   </thead>
                   <tbody>
                     {paginatedIngestionApps.map(app => (
-                      <tr 
-                        key={app.id} 
-                        style={{...S.row, cursor: 'grab'}} 
-                        className="transition hover:brightness-110"
+                      <tr
+                        key={app.id}
+                        style={{ ...S.row, cursor: 'grab' }}
+                        className="transition hover:bg-gray-100 dark:hover:bg-gray-800"
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
                       >
                         <td style={{ padding: '16px 24px' }}>
-                          <span style={{ color: '#ffffff', fontWeight: 600 }}>{app.candidate?.firstName} {app.candidate?.lastName}</span>
-                          <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{app.job?.title || 'Unknown Job'}</div>
+                          <span style={{ color: 'var(--foreground)', fontWeight: 600 }}>{app.candidate?.firstName} {app.candidate?.lastName}</span>
+                          <div style={{ color: 'var(--muted)', fontSize: '12px', marginTop: '2px' }}>{app.job?.title || 'Unknown Job'}</div>
                         </td>
                         <td style={{ padding: '16px 24px' }}>
                           <span style={statusBadgeStyle(app.matchScore != null && app.status === 'APPLIED' ? 'SCREENING' : app.status)}>
@@ -381,13 +381,13 @@ export default function ApplicationsPage() {
                         <td style={{ padding: '16px 24px' }}>
                           {app.matchScore != null ? (
                             <div className="flex items-center gap-4">
-                              <span style={{ fontWeight: 700, color: app.matchScore > 75 ? '#4ade80' : '#94a3b8' }}>{Math.round(app.matchScore)}%</span>
-                              <button onClick={() => handleForceMove(app.id)} style={{fontSize: '10px', backgroundColor: '#334155', padding: '4px 8px', borderRadius: '4px', color: 'white'}}>Move to Review</button>
+                              <span style={{ fontWeight: 700, color: app.matchScore > 75 ? '#4ade80' : 'var(--muted)' }}>{Math.round(app.matchScore)}%</span>
+                              <button onClick={() => handleForceMove(app.id)} style={{ fontSize: '10px', backgroundColor: 'var(--muted)', padding: '4px 8px', borderRadius: '4px', color: 'white' }}>Move to Review</button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-4">
-                              <span style={{ color: '#475569', fontStyle: 'italic', fontSize: '12px' }}>Unscored</span>
-                              <button onClick={() => handleForceMove(app.id)} style={{fontSize: '10px', backgroundColor: '#334155', padding: '4px 8px', borderRadius: '4px', color: 'white'}}>Move to Review</button>
+                              <span style={{ color: 'var(--muted)', fontStyle: 'italic', fontSize: '12px' }}>Unscored</span>
+                              <button onClick={() => handleForceMove(app.id)} style={{ fontSize: '10px', backgroundColor: 'var(--muted)', padding: '4px 8px', borderRadius: '4px', color: 'white' }}>Move to Review</button>
                             </div>
                           )}
                         </td>
@@ -399,17 +399,17 @@ export default function ApplicationsPage() {
             )}
 
             {totalPages > 1 && (
-              <div style={{ backgroundColor: '#1e293b', borderTop: '1px solid #2a364f', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ borderTop: '1px solid var(--card-border)', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <button
                   onClick={() => setIngestionPage(prev => Math.max(1, prev - 1))}
                   disabled={ingestionPage === 1}
-                  style={{ color: '#cbd5e1', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '4px 12px', cursor: ingestionPage === 1 ? 'not-allowed' : 'pointer', opacity: ingestionPage === 1 ? 0.5 : 1 }}
+                  style={{ color: 'var(--foreground)', backgroundColor: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '6px', padding: '4px 12px', cursor: ingestionPage === 1 ? 'not-allowed' : 'pointer', opacity: ingestionPage === 1 ? 0.5 : 1 }}
                 >Previous</button>
-                <span style={{ color: '#94a3b8', fontSize: '13px' }}>Page {ingestionPage} of {totalPages}</span>
+                <span style={{ color: 'var(--muted)', fontSize: '13px' }}>Page {ingestionPage} of {totalPages}</span>
                 <button
                   onClick={() => setIngestionPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={ingestionPage === totalPages}
-                  style={{ color: '#cbd5e1', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '4px 12px', cursor: ingestionPage === totalPages ? 'not-allowed' : 'pointer', opacity: ingestionPage === totalPages ? 0.5 : 1 }}
+                  style={{ color: 'var(--foreground)', backgroundColor: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '6px', padding: '4px 12px', cursor: ingestionPage === totalPages ? 'not-allowed' : 'pointer', opacity: ingestionPage === totalPages ? 0.5 : 1 }}
                 >Next</button>
               </div>
             )}
@@ -419,7 +419,7 @@ export default function ApplicationsPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#a855f7', display: 'inline-block' }} />
-              <h2 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.125rem' }}>Human-Controlled Zone (Vetted)</h2>
+              <h2 style={{ color: 'var(--foreground)', fontWeight: 700, fontSize: '1.125rem' }}>Human-Controlled Zone (Vetted)</h2>
             </div>
 
             <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
@@ -429,7 +429,7 @@ export default function ApplicationsPage() {
                   <div key={col} style={S.kanbanCol} className="snap-start" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, col)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                       <span style={S.kanbanColHeader}>{col}</span>
-                      <span style={{ backgroundColor: '#334155', color: '#e2e8f0', fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px' }}>{colApps.length}</span>
+                      <span style={{ backgroundColor: 'var(--muted)', color: 'var(--card)', fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px' }}>{colApps.length}</span>
                     </div>
 
                     <div>
@@ -440,10 +440,10 @@ export default function ApplicationsPage() {
                           onDragStart={(e) => handleDragStart(e, app.id)}
                           style={S.kanbanCard}
                         >
-                          <h3 style={{ color: '#ffffff', fontWeight: 700, fontSize: '14px' }}>
+                          <h3 style={{ color: 'var(--foreground)', fontWeight: 700, fontSize: '14px' }}>
                             {app.candidate?.firstName} {app.candidate?.lastName}
                           </h3>
-                          <p style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{app.job?.title || 'Unknown Job'}</p>
+                          <p style={{ color: 'var(--muted)', fontSize: '12px', marginTop: '2px' }}>{app.job?.title || 'Unknown Job'}</p>
 
                           {app.matchScore != null && (
                             <div style={{ backgroundColor: '#052e16', border: '1px solid #166534', borderRadius: '8px', padding: '10px', marginTop: '10px' }}>
@@ -462,8 +462,8 @@ export default function ApplicationsPage() {
                       ))}
 
                       {colApps.length === 0 && (
-                        <div style={{ border: '2px dashed #2a364f', borderRadius: '8px', padding: '24px', textAlign: 'center', color: '#475569', fontSize: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                          <svg style={{ width: '20px', height: '20px', color: '#334155' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div style={{ border: '2px dashed var(--card-border)', borderRadius: '8px', padding: '24px', textAlign: 'center', color: 'var(--muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <svg style={{ width: '20px', height: '20px', color: 'var(--muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                           </svg>
                           Drop cards here
