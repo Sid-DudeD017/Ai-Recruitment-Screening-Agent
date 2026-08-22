@@ -132,7 +132,7 @@ export default function InterviewsAndEmailsPage() {
   const [batchDuration, setBatchDuration] = useState<number>(60)
   const [batchType, setBatchType] = useState<string>('VIDEO')
   const [batchStaggerMinutes, setBatchStaggerMinutes] = useState<number>(30)
-  const [batchMeetingLink, setBatchMeetingLink] = useState<string>('https://meet.jit.si/recruitment-interview')
+  const [batchMeetingLink, setBatchMeetingLink] = useState<string>('')
   const [isBatchScheduling, setIsBatchScheduling] = useState<boolean>(false)
 
   // Single Interview Reschedule Modal / State
@@ -541,7 +541,7 @@ export default function InterviewsAndEmailsPage() {
       const interviewDate = inv?.scheduledAt 
         ? new Date(inv.scheduledAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })
         : 'To be scheduled'
-      const meetingLink = inv?.meetingLink || 'https://meet.jit.si/interview-link'
+      const meetingLink = inv?.meetingLink || '[A unique meeting link will be generated automatically upon scheduling]'
 
       const templateMap = {
         acceptance: { body: acceptanceBodyTemplate, subject: acceptanceSubjectTemplate, apiType: 'interview_invite' },
