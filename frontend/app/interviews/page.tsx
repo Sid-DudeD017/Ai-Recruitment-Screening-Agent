@@ -1062,7 +1062,7 @@ export default function InterviewsAndEmailsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="border border-rose-200 bg-rose-50 rounded-xl p-4 flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-rose-900 mb-1">Batch Send Rejections</h3>
+              <h3 className="font-bold text-rose-700 mb-1">Batch Send Rejections</h3>
               <p className="text-xs text-rose-700 mb-4">Uses the <b>Post-Interview Rejection</b> template to automatically email every single candidate currently marked as <b>REJECTED</b>.</p>
             </div>
             <button
@@ -1076,7 +1076,7 @@ export default function InterviewsAndEmailsPage() {
 
           <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-4 flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-emerald-900 mb-1">Batch Send Offers</h3>
+              <h3 className="font-bold text-emerald-700 mb-1">Batch Send Offers</h3>
               <p className="text-xs text-emerald-700 mb-4">Uses the <b>Offer Letter</b> template to automatically email every single candidate currently marked as <b>OFFERED</b>.</p>
             </div>
             <button
