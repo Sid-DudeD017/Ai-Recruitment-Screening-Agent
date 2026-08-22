@@ -55,9 +55,9 @@ Thank you for your interest in the {job_title} role at {company_name}. We were v
 
 We would like to invite you for an interview! Below are the details:
 
-📅 Date & Time: {interview_date}
-⏱️ Duration: 60 minutes
-🔗 Meeting Link / Location: {meeting_link}
+Date & Time: {interview_date}
+Duration: 60 minutes
+Meeting Link / Location: {meeting_link}
 
 Please confirm if this time works for you. If you need to reschedule, reply to this email as soon as possible.
 
@@ -86,8 +86,8 @@ We are absolutely delighted to extend to you a formal offer for the position of 
 
 You demonstrated exceptional skills and enthusiasm throughout the interview process, and we are thrilled to welcome you to our team.
 
-🎉 Position: {job_title}
-🏢 Company: {company_name}
+Position: {job_title}
+Company: {company_name}
 
 We will be sending a formal offer letter with full details of your compensation, benefits, and start date shortly.
 
@@ -348,7 +348,7 @@ export default function InterviewsAndEmailsPage() {
       }
 
       const json = await res.json()
-      setSuccessMsg(`🎉 Successfully scheduled interviews for ${appsInRole.length} candidate(s) for "${batchRoleTitle}"!`)
+      setSuccessMsg(`Successfully scheduled interviews for ${appsInRole.length} candidate(s) for "${batchRoleTitle}"!`)
       await fetchData()
     } catch (err) {
       console.error(err)
@@ -399,7 +399,7 @@ export default function InterviewsAndEmailsPage() {
         throw new Error(errData?.error?.message || 'Failed to update interview date')
       }
 
-      setSuccessMsg(`✓ Interview schedule updated for candidate successfully.`)
+      setSuccessMsg(`Interview schedule updated for candidate successfully.`)
       setEditingInterview(null)
       await fetchData()
       setTimeout(() => setSuccessMsg(null), 4000)
@@ -432,7 +432,7 @@ export default function InterviewsAndEmailsPage() {
       }
       
       await fetchData();
-      setSuccessMsg('✅ Email sent successfully to candidate!');
+      setSuccessMsg('Email sent successfully to candidate!');
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
       console.error(err);
@@ -492,7 +492,7 @@ export default function InterviewsAndEmailsPage() {
       }
 
       await fetchData();
-      setSuccessMsg(`✅ Batch complete! Successfully sent ${successCount} out of ${appsToEmail.length} emails.`)
+      setSuccessMsg(`Batch complete! Successfully sent ${successCount} out of ${appsToEmail.length} emails.`)
     } catch (err) {
       console.error(err)
       setError('An error occurred during batch emailing.')
@@ -604,7 +604,7 @@ export default function InterviewsAndEmailsPage() {
             onClick={() => setIsTemplateModalOpen(true)}
             className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all"
           >
-            ⚙️ Edit Email Templates
+            Edit Email Templates
           </button>
         </div>
       </div>
@@ -742,7 +742,7 @@ export default function InterviewsAndEmailsPage() {
                         {inv ? (
                           <div>
                             <p className="font-bold text-indigo-300">
-                              📅 {new Date(inv.scheduledAt).toLocaleString()}
+                              {new Date(inv.scheduledAt).toLocaleString()}
                             </p>
                             <p className="text-xs text-slate-400">{inv.durationMinutes}m • {inv.type}</p>
                           </div>
@@ -755,13 +755,13 @@ export default function InterviewsAndEmailsPage() {
                         {(app.status === 'OFFERED' || app.status === 'REJECTED') ? (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
                             <span style={getStatusBadgeStyle(app.status)}>
-                              {app.status === 'OFFERED' ? '🎉 Offered' : '❌ Rejected'}
+                              {app.status === 'OFFERED' ? 'Offered' : 'Rejected'}
                             </span>
                             <button
                               onClick={() => { setSelectedAppIdForEmail(app.id); handleDraftEmail(app.status === 'OFFERED' ? 'offer' : 'post_rejection') }}
                               style={{ backgroundColor: app.status === 'OFFERED' ? '#065f46' : '#450a0a', color: app.status === 'OFFERED' ? '#6ee7b7' : '#fca5a5', border: `1px solid ${app.status === 'OFFERED' ? '#10b981' : '#ef4444'}`, borderRadius: '8px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
                             >
-                              📧 Draft {app.status === 'OFFERED' ? 'Offer' : 'Post-Interview Rejection'} Email
+                              Draft {app.status === 'OFFERED' ? 'Offer' : 'Post-Interview Rejection'} Email
                             </button>
                           </div>
                         ) : inv ? (
@@ -769,7 +769,7 @@ export default function InterviewsAndEmailsPage() {
                             onClick={() => handleOpenEditModal(inv)}
                             className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-sm transition"
                           >
-                            ✏️ Edit Date
+                            Edit Date
                           </button>
                         ) : (
                           <button
@@ -779,7 +779,7 @@ export default function InterviewsAndEmailsPage() {
                             }}
                             className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-sm transition"
                           >
-                            📅 Schedule
+                            Schedule
                           </button>
                         )}
                       </td>
@@ -895,7 +895,7 @@ export default function InterviewsAndEmailsPage() {
             >
               {isBatchScheduling
                 ? 'Scheduling Role Candidates...'
-                : `📅 Batch Schedule ${batchRoleTitle ? `(${schedulableRoleGroups[batchRoleTitle]?.length || 0} Candidates)` : ''}`}
+                : `Batch Schedule ${batchRoleTitle ? `(${schedulableRoleGroups[batchRoleTitle]?.length || 0} Candidates)` : ''}`}
             </button>
           </form>
         </div>
@@ -932,12 +932,12 @@ export default function InterviewsAndEmailsPage() {
               if (!selApp) return null
               if (selApp.status === 'OFFERED') return (
                 <div style={{ backgroundColor: '#052e16', border: '1px solid #16a34a', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: '#4ade80' }}>
-                  🎉 This candidate has been <strong>Offered</strong> — use the Offer Letter email below.
+                  This candidate has been <strong>Offered</strong> — use the Offer Letter email below.
                 </div>
               )
               if (selApp.status === 'REJECTED') return (
                 <div style={{ backgroundColor: '#450a0a', border: '1px solid #dc2626', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: '#f87171' }}>
-                  ❌ This candidate has been <strong>Rejected after interview</strong> — use the Post-Interview Rejection email below.
+                  This candidate has been <strong>Rejected after interview</strong> — use the Post-Interview Rejection email below.
                 </div>
               )
               return null
@@ -953,7 +953,7 @@ export default function InterviewsAndEmailsPage() {
                   disabled={isGeneratingEmail || !selectedAppIdForEmail}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs shadow transition disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  {isGeneratingEmail ? 'Drafting...' : '📧 Interview Invite'}
+                  {isGeneratingEmail ? 'Drafting...' : 'Interview Invite'}
                 </button>
                 <button
                   type="button"
@@ -961,7 +961,7 @@ export default function InterviewsAndEmailsPage() {
                   disabled={isGeneratingEmail || !selectedAppIdForEmail}
                   className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs shadow transition disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  {isGeneratingEmail ? 'Drafting...' : '❌ Pre-Interview Rejection'}
+                  {isGeneratingEmail ? 'Drafting...' : 'Pre-Interview Rejection'}
                 </button>
               </div>
               <p style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '10px' }}>Post-Interview</p>
@@ -973,7 +973,7 @@ export default function InterviewsAndEmailsPage() {
                   style={{ backgroundColor: '#065f46', color: '#6ee7b7', fontWeight: 700, padding: '10px 12px', borderRadius: '12px', fontSize: '12px', border: '1px solid #10b981', cursor: (isGeneratingEmail || !selectedAppIdForEmail) ? 'not-allowed' : 'pointer', opacity: (isGeneratingEmail || !selectedAppIdForEmail) ? 0.5 : 1 }}
                   className="flex items-center justify-center gap-1.5 transition"
                 >
-                  {isGeneratingEmail ? 'Drafting...' : '🎉 Offer Letter'}
+                  {isGeneratingEmail ? 'Drafting...' : 'Offer Letter'}
                 </button>
                 <button
                   type="button"
@@ -982,7 +982,7 @@ export default function InterviewsAndEmailsPage() {
                   style={{ backgroundColor: '#450a0a', color: '#fca5a5', fontWeight: 700, padding: '10px 12px', borderRadius: '12px', fontSize: '12px', border: '1px solid #dc2626', cursor: (isGeneratingEmail || !selectedAppIdForEmail) ? 'not-allowed' : 'pointer', opacity: (isGeneratingEmail || !selectedAppIdForEmail) ? 0.5 : 1 }}
                   className="flex items-center justify-center gap-1.5 transition"
                 >
-                  {isGeneratingEmail ? 'Drafting...' : '💔 Post-Interview Rejection'}
+                  {isGeneratingEmail ? 'Drafting...' : 'Post-Interview Rejection'}
                 </button>
               </div>
             </div>
@@ -999,6 +999,7 @@ export default function InterviewsAndEmailsPage() {
               </div>
             )}
 
+            {/* Email Draft Body */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">Email Draft Body</label>
               <textarea
@@ -1021,14 +1022,14 @@ export default function InterviewsAndEmailsPage() {
                   }}
                   className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1.5 rounded-lg border transition"
                 >
-                  📋 Copy to Clipboard
+                  Copy to Clipboard
                 </button>
                 <button
                   type="button"
                   onClick={handleSendEmail}
                   className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-lg shadow transition"
                 >
-                  🚀 Send Email
+                  Send Email
                 </button>
               </div>
             )}
@@ -1056,7 +1057,7 @@ export default function InterviewsAndEmailsPage() {
               disabled={isBatchEmailing}
               className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition disabled:opacity-50"
             >
-              {isBatchEmailing ? 'Dispatching...' : '🔴 Batch Send to All Rejects'}
+              {isBatchEmailing ? 'Dispatching...' : 'Batch Send to All Rejects'}
             </button>
           </div>
 
@@ -1070,7 +1071,7 @@ export default function InterviewsAndEmailsPage() {
               disabled={isBatchEmailing}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition disabled:opacity-50"
             >
-              {isBatchEmailing ? 'Dispatching...' : '🟢 Batch Send to All Offered'}
+              {isBatchEmailing ? 'Dispatching...' : 'Batch Send to All Offered'}
             </button>
           </div>
         </div>
@@ -1191,7 +1192,7 @@ export default function InterviewsAndEmailsPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
             <div className="flex justify-between items-center border-b pb-3">
               <div>
-                <h3 className="text-xl font-extrabold text-gray-900">⚙️ Edit Email Structural Templates</h3>
+                <h3 className="text-xl font-extrabold text-gray-900">Edit Email Structural Templates</h3>
                 <p className="text-xs text-gray-500">
                   Customize the base template structure for Acceptance and Rejection emails.
                 </p>
@@ -1226,7 +1227,7 @@ export default function InterviewsAndEmailsPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                📧 Interview Invite
+                Interview Invite
               </button>
               <button
                 onClick={() => setActiveTemplateTab('rejection')}
@@ -1236,7 +1237,7 @@ export default function InterviewsAndEmailsPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                ❌ Pre-Interview Rejection
+                Pre-Interview Rejection
               </button>
               <button
                 onClick={() => setActiveTemplateTab('offer')}
@@ -1246,7 +1247,7 @@ export default function InterviewsAndEmailsPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                🎉 Offer Letter
+                Offer Letter
               </button>
               <button
                 onClick={() => setActiveTemplateTab('post_rejection')}
@@ -1256,7 +1257,7 @@ export default function InterviewsAndEmailsPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                💔 Post-Interview Rejection
+                Post-Interview Rejection
               </button>
             </div>
 
@@ -1322,7 +1323,7 @@ export default function InterviewsAndEmailsPage() {
                   onClick={handleSaveTemplates}
                   className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow transition"
                 >
-                  💾 Save Templates Structure
+                  Save Templates Structure
                 </button>
               </div>
             </div>

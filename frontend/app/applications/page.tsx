@@ -298,7 +298,7 @@ export default function ApplicationsPage() {
             disabled={isBatchScoring || !activeJobId || ingestionApps.length === 0}
             style={{ backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', opacity: (isBatchScoring || !activeJobId || ingestionApps.length === 0) ? 0.5 : 1, whiteSpace: 'nowrap' }}
           >
-            {isBatchScoring ? 'Processing...' : `✨ Process Remaining (${ingestionApps.length})`}
+            {isBatchScoring ? 'Processing...' : `Process Remaining (${ingestionApps.length})`}
           </button>
         </div>
       </div>

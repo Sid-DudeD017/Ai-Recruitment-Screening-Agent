@@ -472,8 +472,8 @@ export default function CandidatesPage() {
                       <p className="text-sm text-gray-500 mt-1">{c.email}</p>
                       {(c.phone || c.linkedinUrl) && (
                         <p className="text-xs text-gray-500 mt-2 flex gap-4">
-                          {c.phone && <span>📞 {c.phone}</span>}
-                          {c.linkedinUrl && <a href={c.linkedinUrl} target="_blank" className="text-blue-600 hover:underline">🔗 LinkedIn</a>}
+                          {c.phone && <span>Phone: {c.phone}</span>}
+                          {c.linkedinUrl && <a href={c.linkedinUrl} target="_blank" className="text-blue-600 hover:underline">LinkedIn</a>}
                         </p>
                       )}
                     </div>
@@ -482,7 +482,7 @@ export default function CandidatesPage() {
                       <div className="flex items-center gap-3">
                         {hasResume ? (
                           <span className="inline-flex items-center gap-1 bg-green-600 text-white border border-green-700 text-xs px-2.5 py-1.5 rounded-md font-medium shadow-sm">
-                            ✓ AI Parsed Resume
+                            AI Parsed Resume
                           </span>
                         ) : (
                           <button
