@@ -21,7 +21,7 @@ export default function Navbar() {
     <header style={{ backgroundColor: '#151c2c', borderBottom: '1px solid #2a364f', color: '#ffffff' }} className="flex justify-between items-center px-6 py-4 shadow-md">
       <div className="flex items-center gap-8">
         <Link href="/" style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.2rem', textDecoration: 'none' }} className="flex items-center gap-2">
-          <span>🤖</span> AI Recruitment
+          AI Recruitment
         </Link>
         <nav className="hidden md:flex gap-2 text-sm font-medium">
           {navItems.map((item) => {
