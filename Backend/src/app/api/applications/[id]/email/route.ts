@@ -59,10 +59,7 @@ export async function POST(
       }
     });
 
-    // Automatically update the application status based on the email type
-    const { type } = await req.json().catch(() => ({ type: null })); // Re-read or just extract above
-    // Actually we can't await req.json() twice. Let me rewrite the extraction above.
-
+    return NextResponse.json({ success: true, message: "Email sent successfully." });
   } catch (error: any) {
     console.error("Failed to send email:", error);
     return NextResponse.json(
