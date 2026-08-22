@@ -19,6 +19,7 @@ def get_chatbot_response(request: ChatRequest) -> dict:
     
     history_text = ""
     recent_history = request.history[-4:] if len(request.history) > 4 else request.history
+    for msg in recent_history:
         history_text += f"{msg.role.upper()}: {msg.content}\n"
         
     prompt = PromptTemplate.from_template(
