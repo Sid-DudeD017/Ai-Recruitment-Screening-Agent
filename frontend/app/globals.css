@@ -1,147 +1,252 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #0b0f17;
-  --foreground: #f8fafc;
+  --background: #f1f5f9; /* Very light bluish/gray background */
+  --foreground: #0f172a; /* Dark slate text */
+  --card: #ffffff;
+  --card-border: #cbd5e1;
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --muted: #475569;
+  --primary: #2563eb;
+  --accent: #3b82f6;
+
+  --color-blue-bg: #eff6ff;
+  --color-blue-text: #1d4ed8;
+  --color-blue-border: #bfdbfe;
+
+  --color-amber-bg: #fef3c7;
+  --color-amber-text: #b45309;
+  --color-amber-border: #fde68a;
+
+  --color-indigo-bg: #e0e7ff;
+  --color-indigo-text: #4338ca;
+  --color-indigo-border: #c7d2fe;
+
+  --color-purple-bg: #f3e8ff;
+  --color-purple-text: #7e22ce;
+  --color-purple-border: #e9d5ff;
+
+  --color-emerald-bg: #d1fae5;
+  --color-emerald-text: #047857;
+  --color-emerald-border: #a7f3d0;
+
+  --color-red-bg: #ffe4e6;
+  --color-red-text: #b91c1c;
+  --color-red-border: #fecdd3;
+}
+
+.dark {
+  --background: #0b0f19; /* Deep dark bluish background */
+  --foreground: #f8fafc; /* Bright slate text */
+  --card: #151c2c; /* Navy dark card */
+  --card-border: #2a364f;
+  --input-bg: #0f172a;
+  --input-border: #334155;
+  --muted: #94a3b8;
+  --primary: #4f46e5;
+  --accent: #6366f1;
+
+  --color-blue-bg: #1e3a8a;
+  --color-blue-text: #93c5fd;
+  --color-blue-border: #3b82f6;
+
+  --color-amber-bg: #78350f;
+  --color-amber-text: #fef08a;
+  --color-amber-border: #f59e0b;
+
+  --color-indigo-bg: #312e81;
+  --color-indigo-text: #e0e7ff;
+  --color-indigo-border: #4f46e5;
+
+  --color-purple-bg: #581c87;
+  --color-purple-text: #f3e8ff;
+  --color-purple-border: #a855f7;
+
+  --color-emerald-bg: #064e3b;
+  --color-emerald-text: #a7f3d0;
+  --color-emerald-border: #10b981;
+
+  --color-red-bg: #881337;
+  --color-red-text: #fecdd3;
+  --color-red-border: #f43f5e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, monospace;
 }
 
-/* Enforce dark canvas & bright high-visibility text */
+/* Enforce professional typography & dynamic mode backgrounds */
 html, body {
-  background-color: #0b0f17 !important;
-  color: #f8fafc !important;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   min-height: 100vh;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-/* Universal text contrast */
-h1, h2, h3, h4, h5, h6, p, span, label, td, th, div {
-  color: #f8fafc;
-}
-
+/* Dynamic text color mapping */
 .text-gray-900, .text-gray-800, .text-gray-700 {
-  color: #ffffff !important;
+  color: var(--foreground) !important;
 }
 
 .text-gray-600, .text-gray-500 {
-  color: #cbd5e1 !important;
+  color: var(--muted) !important;
 }
 
 .text-gray-400 {
-  color: #94a3b8 !important;
+  color: var(--muted) !important;
 }
 
-/* Card & container dark theme overrides */
+/* Dynamic container & card backgrounds */
 .bg-white {
-  background-color: #151c2c !important;
-  color: #ffffff !important;
-  border-color: #2a364f !important;
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+  border-color: var(--card-border) !important;
 }
 
 .bg-gray-50 {
-  background-color: #1e293b !important;
-  color: #ffffff !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
 }
 
 .bg-gray-100 {
-  background-color: #334155 !important;
-  color: #ffffff !important;
+  background-color: var(--card-border) !important;
+  color: var(--foreground) !important;
 }
 
 .border, .border-b, .border-t, .border-r, .border-l {
-  border-color: #2a364f !important;
+  border-color: var(--card-border) !important;
 }
 
-/* Form inputs, selects & textareas contrast rules */
+/* Input, textarea & select dynamic styles */
 input, select, textarea {
-  color: #ffffff !important;
-  background-color: #0f172a !important;
-  border-color: #334155 !important;
+  color: var(--foreground) !important;
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent) !important;
 }
 
 input::placeholder, textarea::placeholder {
-  color: #94a3b8 !important;
+  color: var(--muted) !important;
 }
 
 select option {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
+  background-color: var(--input-bg) !important;
+  color: var(--foreground) !important;
 }
 
-/* HIGH-CONTRAST BADGES, PILLS & BUTTON OVERRIDES */
+/* HIGH-CONTRAST DYNAMIC BADGES & PILLS */
 
-/* Role / Job Blue Badges */
+/* Blue Badges */
 .bg-blue-50 {
-  background-color: #1e3a8a !important;
-  border-color: #3b82f6 !important;
+  background-color: var(--color-blue-bg) !important;
+  border-color: var(--color-blue-border) !important;
 }
 .text-blue-700, .text-blue-600 {
-  color: #93c5fd !important;
+  color: var(--color-blue-text) !important;
 }
 .border-blue-100, .border-blue-200 {
-  border-color: #3b82f6 !important;
+  border-color: var(--color-blue-border) !important;
 }
 
-/* Status Amber/Yellow Badges */
+/* Amber/Yellow Badges */
 .bg-amber-50 {
-  background-color: #78350f !important;
-  border-color: #f59e0b !important;
+  background-color: var(--color-amber-bg) !important;
+  border-color: var(--color-amber-border) !important;
 }
 .text-amber-700, .text-amber-600 {
-  color: #fef08a !important;
+  color: var(--color-amber-text) !important;
 }
 .border-amber-200 {
-  border-color: #f59e0b !important;
+  border-color: var(--color-amber-border) !important;
 }
 
-/* Action Button Indigo Badges */
+/* Indigo Badges */
 .bg-indigo-50 {
-  background-color: #312e81 !important;
-  border-color: #6366f1 !important;
+  background-color: var(--color-indigo-bg) !important;
+  border-color: var(--color-indigo-border) !important;
 }
 .text-indigo-700, .text-indigo-600 {
-  color: #e0e7ff !important;
+  color: var(--color-indigo-text) !important;
 }
 
 /* Purple AI Badges */
 .bg-purple-50 {
-  background-color: #581c87 !important;
-  border-color: #a855f7 !important;
+  background-color: var(--color-purple-bg) !important;
+  border-color: var(--color-purple-border) !important;
 }
 .text-purple-700, .text-purple-600 {
-  color: #f3e8ff !important;
+  color: var(--color-purple-text) !important;
 }
 
 /* Green Emerald Badges */
 .bg-emerald-50 {
-  background-color: #064e3b !important;
-  border-color: #10b981 !important;
+  background-color: var(--color-emerald-bg) !important;
+  border-color: var(--color-emerald-border) !important;
 }
 .text-emerald-700, .text-emerald-600, .text-emerald-800 {
-  color: #a7f3d0 !important;
+  color: var(--color-emerald-text) !important;
 }
 
 /* Red Rose Badges */
 .bg-rose-50, .bg-red-50 {
-  background-color: #881337 !important;
-  border-color: #f43f5e !important;
+  background-color: var(--color-red-bg) !important;
+  border-color: var(--color-red-border) !important;
 }
 .text-rose-700, .text-red-700, .text-red-600 {
-  color: #fecdd3 !important;
+  color: var(--color-red-text) !important;
 }
 
 /* Table styles */
 table thead tr {
-  background-color: #1e293b !important;
-  color: #f8fafc !important;
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+  border-bottom: 2px solid var(--card-border) !important;
 }
 
 table tbody tr:hover {
-  background-color: #1e293b !important;
+  background-color: var(--color-blue-bg) !important;
 }
+
+/* Light mode specific text contrast overrides (to make light text visible on white backgrounds) */
+html:not(.dark) .text-slate-400,
+html:not(.dark) .text-slate-300,
+html:not(.dark) .text-slate-200,
+html:not(.dark) .text-gray-400,
+html:not(.dark) .text-gray-300,
+html:not(.dark) .text-gray-200 {
+  color: var(--muted) !important;
+}
+
+html:not(.dark) .text-indigo-300,
+html:not(.dark) .text-indigo-200,
+html:not(.dark) .text-indigo-400 {
+  color: var(--color-indigo-text) !important;
+}
+
+html:not(.dark) .text-purple-300,
+html:not(.dark) .text-purple-200,
+html:not(.dark) .text-purple-400 {
+  color: var(--color-purple-text) !important;
+}
+
+html:not(.dark) .text-emerald-400,
+html:not(.dark) .text-emerald-300 {
+  color: var(--color-emerald-text) !important;
+}
+
+html:not(.dark) .text-red-400,
+html:not(.dark) .text-rose-400 {
+  color: var(--color-red-text) !important;
+}
+

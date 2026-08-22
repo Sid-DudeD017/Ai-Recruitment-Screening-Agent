@@ -30,12 +30,12 @@ interface Job {
 }
 
 const S = {
-  card: { backgroundColor: '#151c2c', border: '1px solid #2a364f', borderRadius: '12px', overflow: 'hidden' } as React.CSSProperties,
-  thead: { backgroundColor: '#1e293b', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
-  row: { borderBottom: '1px solid #2a364f' } as React.CSSProperties,
-  kanbanCol: { backgroundColor: '#1a2438', border: '1px solid #2a364f', borderRadius: '12px', padding: '16px', minWidth: '280px', width: '280px', flexShrink: 0, minHeight: '480px' } as React.CSSProperties,
-  kanbanColHeader: { color: '#94a3b8', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
-  kanbanCard: { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '10px', padding: '14px', marginBottom: '10px', cursor: 'grab', transition: 'border-color 0.15s' } as React.CSSProperties,
+  card: { backgroundColor: 'var(--card)', border: '1px solid var(--card-border)', borderRadius: '12px', overflow: 'hidden' } as React.CSSProperties,
+  thead: { backgroundColor: 'var(--card)', color: 'var(--muted)', fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.05em', borderBottom: '2px solid var(--card-border)' },
+  row: { borderBottom: '1px solid var(--card-border)' } as React.CSSProperties,
+  kanbanCol: { backgroundColor: 'var(--card)', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '16px', minWidth: '280px', width: '280px', flexShrink: 0, minHeight: '480px' } as React.CSSProperties,
+  kanbanColHeader: { color: 'var(--muted)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
+  kanbanCard: { backgroundColor: 'var(--background)', border: '1px solid var(--card-border)', borderRadius: '10px', padding: '14px', marginBottom: '10px', cursor: 'grab', transition: 'border-color 0.15s, background-color 0.15s' } as React.CSSProperties,
 }
 
 export default function ApplicationsPage() {
@@ -473,22 +473,22 @@ export default function ApplicationsPage() {
 
       {/* HITL Review Modal */}
       {reviewingApp && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
-          <div style={{ backgroundColor: '#151c2c', border: '1px solid #2a364f', borderRadius: '16px', maxWidth: '512px', width: '100%', padding: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-            <h2 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.25rem' }}>Human-in-the-Loop Review</h2>
-            <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '4px' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+          <div style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)', borderRadius: '16px', maxWidth: '512px', width: '100%', padding: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: 'var(--foreground)', fontWeight: 700, fontSize: '1.25rem' }}>Human-in-the-Loop Review</h2>
+            <p style={{ color: 'var(--muted)', fontSize: '14px', marginTop: '4px' }}>
               Review the AI's email draft for {reviewingApp.candidateName || (reviewingApp.candidate ? `${reviewingApp.candidate.firstName} ${reviewingApp.candidate.lastName}` : '')} before sending.
             </p>
             <div style={{ marginTop: '16px' }}>
-              <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>AI Email Draft</label>
+              <label style={{ color: 'var(--muted)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>AI Email Draft</label>
               <textarea
                 value={editedEmail}
                 onChange={(e) => setEditedEmail(e.target.value)}
-                style={{ width: '100%', height: '192px', padding: '12px', fontSize: '14px', backgroundColor: '#0f172a', color: '#ffffff', border: '1px solid #334155', borderRadius: '8px', resize: 'vertical', boxSizing: 'border-box' }}
+                style={{ width: '100%', height: '192px', padding: '12px', fontSize: '14px', backgroundColor: 'var(--background)', color: 'var(--foreground)', border: '1px solid var(--card-border)', borderRadius: '8px', resize: 'vertical', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button onClick={() => setReviewingApp(null)} style={{ color: '#94a3b8', backgroundColor: '#1e293b', border: '1px solid #334155', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setReviewingApp(null)} style={{ color: 'var(--foreground)', backgroundColor: 'var(--background)', border: '1px solid var(--card-border)', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleReject} style={{ color: '#fca5a5', backgroundColor: '#450a0a', border: '1px solid #dc2626', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Reject Candidate</button>
               <button onClick={handleApproveAndSend} style={{ color: '#ffffff', backgroundColor: '#4f46e5', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>Approve & Send Email</button>
             </div>

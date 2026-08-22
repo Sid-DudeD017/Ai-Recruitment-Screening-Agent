@@ -4,8 +4,8 @@ import React from 'react'
 
 const S = {
   card: { 
-    backgroundColor: '#151c2c', 
-    border: '1px solid #2a364f', 
+    backgroundColor: 'var(--card)', 
+    border: '1px solid var(--card-border)', 
     borderRadius: '12px', 
     padding: '24px', 
     marginBottom: '24px' 
@@ -31,15 +31,15 @@ export default function TutorialPage() {
     <div className="space-y-10 max-w-4xl mx-auto py-6">
       {/* Header */}
       <div>
-        <h1 style={{ color: '#ffffff', fontWeight: 800, fontSize: '2.25rem' }}>User Guide and Tutorial</h1>
-        <p style={{ color: '#94a3b8', marginTop: '4px', fontSize: '1.1rem' }}>
+        <h1 className="text-gray-900 font-extrabold text-3xl">User Guide and Tutorial</h1>
+        <p className="text-gray-500 mt-1.5 text-lg">
           Detailed walkthrough of the recruitment screening workflows and application stages.
         </p>
       </div>
 
       {/* Usage Guide */}
       <div>
-        <h2 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.5rem', marginBottom: '16px' }} className="flex items-center gap-2">
+        <h2 className="text-gray-900 font-bold text-xl mb-4 flex items-center gap-2">
           Step-by-Step Recruitment Workflow
         </h2>
         
@@ -49,16 +49,16 @@ export default function TutorialPage() {
             <div className="flex gap-4">
               <div style={{ ...S.stepNumber, backgroundColor: '#3b82f6' }}>1</div>
               <div>
-                <h3 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.1rem' }}>Define and Create Job Postings</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '6px', lineHeight: '1.6' }}>
+                <h3 className="text-gray-900 font-bold text-base">Define and Create Job Postings</h3>
+                <p className="text-gray-600 text-sm mt-1.5 leading-relaxed">
                   Begin by accessing the Jobs panel. You can inspect active job roles or create a new one using the "+ Create New Job" option. The creation form prompts you for:
                 </p>
-                <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-300 text-sm">
+                <ul className="list-disc pl-5 mt-2 space-y-1 text-gray-500 text-sm">
                   <li><strong>Job Details</strong>: Job Title, Location, and Job Type (Full-Time, Part-Time, Contract, Remote, or Internship).</li>
                   <li><strong>Compensation Limits</strong>: Minimum and maximum salary ranges to help track salary constraints.</li>
                   <li><strong>Description & Requirements</strong>: A comprehensive summary of responsibilities and a detailed list of mandatory qualifications, skills, and experience levels.</li>
                 </ul>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '8px', lineHeight: '1.6' }}>
+                <p className="text-gray-600 text-sm mt-2 leading-relaxed">
                   The details you write under the Requirements field serve as the baseline criteria for resume evaluation. Clear, structured lists of tech stacks and experiences yield the highest accuracy from the matching model.
                 </p>
               </div>
@@ -68,11 +68,11 @@ export default function TutorialPage() {
             <div className="flex gap-4">
               <div style={{ ...S.stepNumber, backgroundColor: '#3b82f6' }}>2</div>
               <div>
-                <h3 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.1rem' }}>Upload and Parse Resumes</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '6px', lineHeight: '1.6' }}>
+                <h3 className="text-gray-900 font-bold text-base">Upload and Parse Resumes</h3>
+                <p className="text-gray-600 text-sm mt-1.5 leading-relaxed">
                   Access the Candidates directory page to upload resumes and automatically populate candidate profiles:
                 </p>
-                <ul className="list-disc pl-5 mt-2 space-y-3 text-slate-300 text-sm">
+                <ul className="list-disc pl-5 mt-2 space-y-3 text-gray-500 text-sm">
                   <li>
                     <strong>Select Job Role</strong>: In the upload section, first select an open position from the dropdown menu under the title "Select Job for Auto-Apply". This step is required before the upload zone becomes active, as the parser automatically applies the candidate to the chosen job role.
                   </li>
@@ -96,18 +96,18 @@ export default function TutorialPage() {
             <div className="flex gap-4">
               <div style={{ ...S.stepNumber, backgroundColor: '#3b82f6' }}>3</div>
               <div>
-                <h3 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.1rem' }}>Screening & Match Evaluation</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '6px', lineHeight: '1.6' }}>
+                <h3 className="text-gray-900 font-bold text-base">Screening & Match Evaluation</h3>
+                <p className="text-gray-600 text-sm mt-1.5 leading-relaxed">
                   Navigate to the Pipeline tab. In the upper-right dropdown, select the specific job you want to evaluate candidates for.
                 </p>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '8px', lineHeight: '1.6' }}>
+                <p className="text-gray-600 text-sm mt-2 leading-relaxed">
                   You will see two distinct zones:
                 </p>
-                <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-300 text-sm">
+                <ul className="list-disc pl-5 mt-2 space-y-1 text-gray-500 text-sm">
                   <li><strong>AI-Controlled Zone</strong>: Displays a table of all newly applied or un-evaluated candidates (statuses set to APPLIED or SCREENING).</li>
                   <li><strong>Human-Controlled Zone</strong>: A Kanban board split into recruitment stages starting from PENDING_REVIEW.</li>
                 </ul>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '8px', lineHeight: '1.6' }}>
+                <p className="text-gray-600 text-sm mt-2 leading-relaxed">
                   To run the matching model, click the "Process All Candidates" button. The system initiates an evaluation loop for all un-screened profiles, calling the matching model to run semantic matching against job requirements, identify missing keywords, detect systemic bias (such as gender, age, or education-tier bias), and calculate a compatibility score from 0 to 100.
                 </p>
               </div>
@@ -117,15 +117,15 @@ export default function TutorialPage() {
             <div className="flex gap-4">
               <div style={{ ...S.stepNumber, backgroundColor: '#3b82f6' }}>4</div>
               <div>
-                <h3 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.1rem' }}>Reviewing & Promoting Candidates</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '6px', lineHeight: '1.6' }}>
+                <h3 className="text-gray-900 font-bold text-base">Reviewing & Promoting Candidates</h3>
+                <p className="text-gray-600 text-sm mt-1.5 leading-relaxed">
                   The application routes candidates automatically based on their compatibility:
                 </p>
-                <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-300 text-sm">
+                <ul className="list-disc pl-5 mt-2 space-y-1 text-gray-500 text-sm">
                   <li><strong>Score &gt; 75%</strong>: The candidate status is updated to PENDING_REVIEW, and they are automatically moved out of the ingestion table and onto the first column of the Human-Controlled Kanban Board.</li>
                   <li><strong>Score ≤ 75%</strong>: The candidate remains in the AI-Controlled Ingestion Zone with a status of SCREENING, keeping the vetted pipeline clutter-free.</li>
                 </ul>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '8px', lineHeight: '1.6' }}>
+                <p className="text-gray-600 text-sm mt-2 leading-relaxed">
                   Recruiters can manually review the AI's matching reasoning, view missing requirement summaries, and move cards across column headers (PENDING_REVIEW, SHORTLISTED, INTERVIEW, OFFERED, HIRED) by dragging and dropping them.
                 </p>
               </div>
@@ -135,11 +135,11 @@ export default function TutorialPage() {
             <div className="flex gap-4">
               <div style={{ ...S.stepNumber, backgroundColor: '#3b82f6' }}>5</div>
               <div>
-                <h3 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.1rem' }}>Interviews & Communications</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '14px', marginTop: '6px', lineHeight: '1.6' }}>
+                <h3 className="text-gray-900 font-bold text-base">Interviews & Communications</h3>
+                <p className="text-gray-600 text-sm mt-1.5 leading-relaxed">
                   Access the Interviews and Email tab to manage scheduling, template customization, and outreach drafts:
                 </p>
-                <ul className="list-disc pl-5 mt-2 space-y-3 text-slate-300 text-sm">
+                <ul className="list-disc pl-5 mt-2 space-y-3 text-gray-500 text-sm">
                   <li>
                     <strong>Edit Email Templates</strong>: Click the Edit Email Templates button to customize default message text. You can configure layouts for Acceptance (Interview Invitations), Rejection, Job Offer, and Post-Interview Rejection templates. The templates support placeholders such as candidate_name, job_title, company_name, interview_date, and meeting_link, and are saved directly to local storage.
                   </li>
